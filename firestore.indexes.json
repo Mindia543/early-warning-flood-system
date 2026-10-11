@@ -1,0 +1,29 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "warnings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "expiryTime", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "warnings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "issueTime", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "alertsEnabled", "order": "ASCENDING" },
+        { "fieldPath": "location", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

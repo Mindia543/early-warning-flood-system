@@ -1,0 +1,54 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return signedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
+    match /users/{userId} {
+      allow create: if isOwner(userId)
+        && request.resource.data.email == request.auth.token.email;
+      allow read: if isOwner(userId) || isAdmin();
+      allow update: if isOwner(userId)
+        && request.resource.data.email == resource.data.email
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['displayName', 'location', 'alertsEnabled', 'updatedAt']);
+      allow delete: if false;
+
+      match /devices/{deviceId} {
+        allow read, create, update, delete: if isOwner(userId);
+      }
+    }
+
+    match /warnings/{warningId} {
+      allow read: if signedIn();
+      allow create: if isAdmin()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.status == 'draft';
+      allow update: if isAdmin()
+        && request.resource.data.createdBy == resource.data.createdBy;
+      allow delete: if false;
+    }
+
+    // Only the trusted Cloud Function can write delivery records. Clients can
+    // read records belonging to their own UID for delivery diagnostics.
+    match /notification_logs/{logId} {
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow write: if false;
+    }
+
+    match /sensor_readings/{readingId} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+  }
+}
