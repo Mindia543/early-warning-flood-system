@@ -64,18 +64,18 @@ workflow in `.github/workflows/deploy-web.yml` publishes the web build from
 
 ## Email delivery setup
 
-The same publish trigger sends email to each matching user's verified email
-address through Brevo. Create a Brevo account, authenticate the sender address
-or domain, and create an API key. Store it in Firebase Secret Manager; never
-put it in Flutter, `.env` files committed to Git, or GitHub source:
+The same publish trigger sends email to each matching user's email address
+through Gmail SMTP. Use a dedicated Gmail account and a Google App Password.
+Store both values in Firebase Secret Manager; never put them in Flutter, `.env`
+files committed to Git, or GitHub source:
 
 ```bash
-firebase functions:secrets:set BREVO_API_KEY
+firebase functions:secrets:set SMTP_USER
+firebase functions:secrets:set SMTP_PASSWORD
 ```
 
-During the first Functions deployment, provide the requested
-`EMAIL_FROM_ADDRESS` value. It must be the authenticated Brevo sender. Deploy
-again after setting the secret:
+The SMTP sender is `SMTP_USER`. The backend uses `smtp.gmail.com` on port 465
+with SSL. Deploy after setting both secrets:
 
 ```bash
 cd functions
@@ -86,9 +86,8 @@ firebase deploy --only functions
 ```
 
 The app profile has separate push and email switches. Email results are stored
-in `notification_logs` with `channel: "email"`. Brevo documents the
-transactional endpoint and `api-key` authentication in its
-[official API documentation](https://developers.brevo.com/docs/send-a-transactional-email).
+in `notification_logs` with `channel: "email"`. Gmail requires 2-Step
+Verification and an App Password for this type of SMTP connection.
 
 ## Checks
 

@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "firebase-admin": "^13.0.2",
-    "firebase-functions": "^6.3.2"
+    "firebase-functions": "^6.3.2",
+    "nodemailer": "^10.0.15"
   },
   "devDependencies": {
     "typescript": "^5.7.2"

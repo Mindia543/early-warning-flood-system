@@ -4,12 +4,13 @@ import { getMessaging, MulticastMessage } from "firebase-admin/messaging";
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret, defineString } from "firebase-functions/params";
+import nodemailer from "nodemailer";
 
 initializeApp();
 
 const db = getFirestore();
-const brevoApiKey = defineSecret("BREVO_API_KEY");
-const emailFromAddress = defineString("EMAIL_FROM_ADDRESS");
+const smtpUser = defineSecret("SMTP_USER");
+const smtpPassword = defineSecret("SMTP_PASSWORD");
 const emailFromName = defineString("EMAIL_FROM_NAME", { default: "FloodWatch" });
 
 type WarningData = {
@@ -53,7 +54,7 @@ export const publishWarning = onCall(async (request) => {
 
 /** Sends one push notification to every enabled device for users in the area. */
 export const sendWarningNotifications = onDocumentUpdated(
-  { document: "warnings/{warningId}", secrets: [brevoApiKey] },
+  { document: "warnings/{warningId}", secrets: [smtpUser, smtpPassword] },
   async (event) => {
     const before = event.data?.before.data() as WarningData | undefined;
     const afterSnapshot = event.data?.after;
@@ -161,25 +162,19 @@ async function sendWarningEmail(
   ].join("\\n");
 
   try {
-    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-      method: "POST",
-      headers: {
-        accept: "application/json",
-        "api-key": brevoApiKey.value(),
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        sender: { email: emailFromAddress.value(), name: emailFromName.value() },
-        to: [{ email: recipient }],
-        subject: title,
-        textContent: plainText,
-        htmlContent: `<h2>${escapeHtml(title)}</h2><p>${escapeHtml(warning.description)}</p><p><strong>Affected area:</strong> ${escapeHtml(warning.affectedArea)}<br><strong>Source:</strong> ${escapeHtml(warning.source)}</p><p>Open FloodWatch to view the complete warning.</p>`,
-        tags: ["flood-warning", warning.severity],
-      }),
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: { user: smtpUser.value(), pass: smtpPassword.value() },
     });
-    if (!response.ok) {
-      throw new Error(`Brevo returned HTTP ${response.status}: ${await response.text()}`);
-    }
+    await transporter.sendMail({
+      from: `"${emailFromName.value()}" <${smtpUser.value()}>`,
+      to: recipient,
+      subject: title,
+      text: plainText,
+      html: `<h2>${escapeHtml(title)}</h2><p>${escapeHtml(warning.description)}</p><p><strong>Affected area:</strong> ${escapeHtml(warning.affectedArea)}<br><strong>Source:</strong> ${escapeHtml(warning.source)}</p><p>Open FloodWatch to view the complete warning.</p>`,
+    });
     await writeLog(user.id, warningId, "sent", 1, null, "email");
   } catch (error) {
     await writeLog(user.id, warningId, "failed", 0, String(error), "email");
