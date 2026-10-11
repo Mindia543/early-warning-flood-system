@@ -7,6 +7,7 @@ class AppUser {
     required this.displayName,
     required this.location,
     required this.alertsEnabled,
+    required this.emailAlertsEnabled,
     this.isAdmin = false,
   });
 
@@ -15,6 +16,7 @@ class AppUser {
   final String displayName;
   final String location;
   final bool alertsEnabled;
+  final bool emailAlertsEnabled;
   final bool isAdmin;
 
   factory AppUser.fromSnapshot(
@@ -27,6 +29,7 @@ class AppUser {
       displayName: data['displayName'] as String? ?? '',
       location: data['location'] as String? ?? '',
       alertsEnabled: data['alertsEnabled'] as bool? ?? true,
+      emailAlertsEnabled: data['emailAlertsEnabled'] as bool? ?? true,
       // Admin status is authoritative from a custom claim, not this field.
       isAdmin: false,
     );
@@ -37,6 +40,7 @@ class AppUser {
     'displayName': displayName,
     'location': location,
     'alertsEnabled': alertsEnabled,
+    'emailAlertsEnabled': emailAlertsEnabled,
     'updatedAt': FieldValue.serverTimestamp(),
   };
 }

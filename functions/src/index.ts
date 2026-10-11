@@ -3,10 +3,14 @@ import { FieldValue, getFirestore, QueryDocumentSnapshot } from "firebase-admin/
 import { getMessaging, MulticastMessage } from "firebase-admin/messaging";
 import { onDocumentUpdated } from "firebase-functions/v2/firestore";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { defineSecret, defineString } from "firebase-functions/params";
 
 initializeApp();
 
 const db = getFirestore();
+const brevoApiKey = defineSecret("BREVO_API_KEY");
+const emailFromAddress = defineString("EMAIL_FROM_ADDRESS");
+const emailFromName = defineString("EMAIL_FROM_NAME", { default: "FloodWatch" });
 
 type WarningData = {
   title: string;
@@ -49,7 +53,7 @@ export const publishWarning = onCall(async (request) => {
 
 /** Sends one push notification to every enabled device for users in the area. */
 export const sendWarningNotifications = onDocumentUpdated(
-  "warnings/{warningId}",
+  { document: "warnings/{warningId}", secrets: [brevoApiKey] },
   async (event) => {
     const before = event.data?.before.data() as WarningData | undefined;
     const afterSnapshot = event.data?.after;
@@ -76,6 +80,8 @@ async function notifyUser(
   warningId: string,
   warning: WarningData,
 ): Promise<void> {
+  await sendWarningEmail(user, warningId, warning);
+
   const devices = await user.ref.collection("devices").where("enabled", "==", true).get();
   const tokens = devices.docs
     .map((device) => device.data().token)
@@ -127,6 +133,69 @@ async function notifyUser(
   }
 }
 
+async function sendWarningEmail(
+  user: QueryDocumentSnapshot,
+  warningId: string,
+  warning: WarningData,
+): Promise<void> {
+  const data = user.data();
+  const recipient = data.email;
+  if (data.emailAlertsEnabled === false) {
+    await writeLog(user.id, warningId, "skipped", 0, "Email alerts are disabled.", "email");
+    return;
+  }
+  if (typeof recipient !== "string" || !recipient.includes("@")) {
+    await writeLog(user.id, warningId, "skipped", 0, "User has no valid email address.", "email");
+    return;
+  }
+
+  const title = `Flood warning: ${warning.severity}`;
+  const plainText = [
+    warning.title,
+    "",
+    warning.description,
+    "",
+    `Affected area: ${warning.affectedArea}`,
+    `Source: ${warning.source}`,
+    `Warning ID: ${warningId}`,
+  ].join("\\n");
+
+  try {
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": brevoApiKey.value(),
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: { email: emailFromAddress.value(), name: emailFromName.value() },
+        to: [{ email: recipient }],
+        subject: title,
+        textContent: plainText,
+        htmlContent: `<h2>${escapeHtml(title)}</h2><p>${escapeHtml(warning.description)}</p><p><strong>Affected area:</strong> ${escapeHtml(warning.affectedArea)}<br><strong>Source:</strong> ${escapeHtml(warning.source)}</p><p>Open FloodWatch to view the complete warning.</p>`,
+        tags: ["flood-warning", warning.severity],
+      }),
+    });
+    if (!response.ok) {
+      throw new Error(`Brevo returned HTTP ${response.status}: ${await response.text()}`);
+    }
+    await writeLog(user.id, warningId, "sent", 1, null, "email");
+  } catch (error) {
+    await writeLog(user.id, warningId, "failed", 0, String(error), "email");
+  }
+}
+
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>\"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#039;",
+  })[character] ?? character);
+}
+
 function isPermanentTokenError(code?: string): boolean {
   return code === "messaging/registration-token-not-registered" ||
     code === "messaging/invalid-registration-token";
@@ -138,6 +207,7 @@ async function writeLog(
   status: string,
   deliveredCount: number,
   error: string | null,
+  channel = "push",
 ): Promise<void> {
   await db.collection("notification_logs").add({
     userId,
@@ -145,6 +215,7 @@ async function writeLog(
     status,
     deliveredCount,
     error,
+    channel,
     createdAt: FieldValue.serverTimestamp(),
   });
 }

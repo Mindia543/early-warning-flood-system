@@ -62,6 +62,34 @@ workflow in `.github/workflows/deploy-web.yml` publishes the web build from
 `main`; enable Pages to get the public link. Firebase Hosting is an alternative:
 `flutter build web --release` then `firebase deploy --only hosting`.
 
+## Email delivery setup
+
+The same publish trigger sends email to each matching user's verified email
+address through Brevo. Create a Brevo account, authenticate the sender address
+or domain, and create an API key. Store it in Firebase Secret Manager; never
+put it in Flutter, `.env` files committed to Git, or GitHub source:
+
+```bash
+firebase functions:secrets:set BREVO_API_KEY
+```
+
+During the first Functions deployment, provide the requested
+`EMAIL_FROM_ADDRESS` value. It must be the authenticated Brevo sender. Deploy
+again after setting the secret:
+
+```bash
+cd functions
+npm install
+npm run build
+cd ..
+firebase deploy --only functions
+```
+
+The app profile has separate push and email switches. Email results are stored
+in `notification_logs` with `channel: "email"`. Brevo documents the
+transactional endpoint and `api-key` authentication in its
+[official API documentation](https://developers.brevo.com/docs/send-a-transactional-email).
+
 ## Checks
 
 ```bash

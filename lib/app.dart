@@ -238,6 +238,7 @@ class _FloodDashboardState extends State<FloodDashboard> {
       displayName: widget.user.displayName ?? '',
       location: '',
       alertsEnabled: true,
+      emailAlertsEnabled: true,
     );
     _notifications.initialize();
   }
@@ -255,6 +256,7 @@ class _FloodDashboardState extends State<FloodDashboard> {
       text: profile?.location ?? '',
     );
     var alertsEnabled = profile?.alertsEnabled ?? true;
+    var emailAlertsEnabled = profile?.emailAlertsEnabled ?? true;
     final saved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -272,6 +274,12 @@ class _FloodDashboardState extends State<FloodDashboard> {
                 value: alertsEnabled,
                 onChanged: (value) =>
                     setDialogState(() => alertsEnabled = value),
+              ),
+              SwitchListTile(
+                title: const Text('Receive email alerts'),
+                value: emailAlertsEnabled,
+                onChanged: (value) =>
+                    setDialogState(() => emailAlertsEnabled = value),
               ),
             ],
           ),
@@ -293,6 +301,7 @@ class _FloodDashboardState extends State<FloodDashboard> {
         displayName: widget.user.displayName ?? '',
         location: locationController.text,
         alertsEnabled: alertsEnabled,
+        emailAlertsEnabled: emailAlertsEnabled,
       );
     }
     locationController.dispose();

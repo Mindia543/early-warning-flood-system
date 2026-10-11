@@ -19,6 +19,7 @@ class DatabaseService {
     required String displayName,
     required String location,
     required bool alertsEnabled,
+    required bool emailAlertsEnabled,
   }) async {
     final user = _auth.currentUser;
     if (user == null) throw StateError('You must be signed in.');
@@ -29,6 +30,7 @@ class DatabaseService {
       displayName: displayName.trim(),
       location: location.trim(),
       alertsEnabled: alertsEnabled,
+      emailAlertsEnabled: emailAlertsEnabled,
     );
     await _firestore
         .collection('users')

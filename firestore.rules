@@ -21,7 +21,7 @@ service cloud.firestore {
       allow update: if isOwner(userId)
         && request.resource.data.email == resource.data.email
         && request.resource.data.diff(resource.data).affectedKeys()
-          .hasOnly(['displayName', 'location', 'alertsEnabled', 'updatedAt']);
+          .hasOnly(['displayName', 'location', 'alertsEnabled', 'emailAlertsEnabled', 'updatedAt']);
       allow delete: if false;
 
       match /devices/{deviceId} {
