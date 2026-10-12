@@ -34,23 +34,30 @@
 </head>
 <body>
   <script>
-    // Remove service workers from older Flutter deployments so an updated
-    // GitHub Pages build cannot be hidden behind a stale app-shell cache.
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function (registrations) {
-        registrations.forEach(function (registration) {
-          registration.unregister();
-        });
-      });
-    }
-    if (window.caches) {
-      caches.keys().then(function (keys) {
-        keys.forEach(function (key) {
-          caches.delete(key);
-        });
-      });
-    }
+    // Remove service workers from older Flutter deployments before loading
+    // the app, then reload once so the old worker cannot serve one more bundle.
+    (async function () {
+      const registrations = 'serviceWorker' in navigator
+        ? await navigator.serviceWorker.getRegistrations()
+        : [];
+      const cacheKeys = window.caches ? await caches.keys() : [];
+      const hadOldCache = registrations.length > 0 || cacheKeys.length > 0;
+
+      await Promise.all([
+        ...registrations.map((registration) => registration.unregister()),
+        ...cacheKeys.map((key) => caches.delete(key)),
+      ]);
+
+      if (hadOldCache) {
+        window.location.reload();
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = 'flutter_bootstrap.js';
+      script.async = true;
+      document.body.appendChild(script);
+    })();
   </script>
-  <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>
