@@ -484,127 +484,209 @@ class _FloodDashboardState extends State<FloodDashboard> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      titleSpacing: 22,
-      title: Row(
-        children: [
-          const Icon(Icons.shield_rounded, color: _cyan, size: 30),
-          const SizedBox(width: 10),
-          Text(
-            'FloodWatch',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(width: 20),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
-            decoration: BoxDecoration(
-              border: Border.all(color: _green.withValues(alpha: .65)),
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.circle, color: _green, size: 10),
-                SizedBox(width: 8),
-                Text(
-                  'System online',
-                  style: TextStyle(color: _green, fontWeight: FontWeight.w700),
+  Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 700;
+    return Scaffold(
+      drawer: compact
+          ? Drawer(
+              child: SafeArea(
+                child: _DashboardRail(
+                  compact: true,
+                  selected: _selectedNav,
+                  onSelected: (value) {
+                    setState(() => _selectedNav = value);
+                    Navigator.of(context).pop();
+                  },
                 ),
-              ],
+              ),
+            )
+          : null,
+      appBar: AppBar(
+        leading: compact
+            ? Builder(
+                builder: (context) => IconButton(
+                  icon: const Icon(Icons.menu_rounded),
+                  tooltip: 'Open menu',
+                  onPressed: () => Scaffold.of(context).openDrawer(),
+                ),
+              )
+            : null,
+        titleSpacing: compact ? 4 : 22,
+        title: Row(
+          children: [
+            Icon(Icons.shield_rounded, color: _cyan, size: compact ? 24 : 30),
+            SizedBox(width: compact ? 6 : 10),
+            Text(
+              'FloodWatch',
+              style:
+                  (compact
+                          ? Theme.of(context).textTheme.titleMedium
+                          : Theme.of(context).textTheme.titleLarge)
+                      ?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontWeight: FontWeight.w800,
+                      ),
             ),
-          ),
-        ],
-      ),
-      actions: [
-        IconButton(
-          icon: Icon(
-            Theme.of(context).brightness == Brightness.dark
-                ? Icons.light_mode_outlined
-                : Icons.dark_mode_outlined,
-          ),
-          tooltip: 'Switch theme',
-          onPressed: widget.onToggleTheme,
-        ),
-        IconButton(
-          icon: const Icon(Icons.notifications_active_outlined),
-          tooltip: 'Open alerts',
-          onPressed: () => setState(() => _selectedNav = 2),
-        ),
-        PopupMenuButton<String>(
-          tooltip: 'Account',
-          onSelected: (value) {
-            if (value == 'preferences') _editProfile();
-            if (value == 'logout') widget.auth.signOut();
-          },
-          itemBuilder: (context) => const [
-            PopupMenuItem(
-              value: 'preferences',
-              child: Text('Alert preferences'),
-            ),
-            PopupMenuItem(value: 'logout', child: Text('Sign out')),
+            if (!compact) ...[
+              const SizedBox(width: 20),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  border: Border.all(color: _green.withValues(alpha: .65)),
+                  borderRadius: BorderRadius.circular(22),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.circle, color: _green, size: 10),
+                    SizedBox(width: 8),
+                    Text(
+                      'System online',
+                      style: TextStyle(
+                        color: _green,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: CircleAvatar(
-              backgroundColor: const Color(0xff1f3c4c),
-              child: Text(
-                _initials,
-                style: const TextStyle(
-                  color: _cyan,
-                  fontWeight: FontWeight.w800,
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              Theme.of(context).brightness == Brightness.dark
+                  ? Icons.light_mode_outlined
+                  : Icons.dark_mode_outlined,
+            ),
+            tooltip: 'Switch theme',
+            onPressed: widget.onToggleTheme,
+          ),
+          IconButton(
+            icon: const Icon(Icons.notifications_active_outlined),
+            tooltip: 'Open alerts',
+            onPressed: () => setState(() => _selectedNav = 2),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Account',
+            onSelected: (value) {
+              if (value == 'preferences') _editProfile();
+              if (value == 'logout') widget.auth.signOut();
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'preferences',
+                child: Text('Alert preferences'),
+              ),
+              PopupMenuItem(value: 'logout', child: Text('Sign out')),
+            ],
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 16),
+              child: CircleAvatar(
+                backgroundColor: const Color(0xff1f3c4c),
+                child: Text(
+                  _initials,
+                  style: const TextStyle(
+                    color: _cyan,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      ],
-    ),
-    body: Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _DashboardRail(
-          selected: _selectedNav,
-          onSelected: (value) => setState(() => _selectedNav = value),
-        ),
-        Expanded(
-          child: StreamBuilder<List<FloodWarning>>(
-            stream: _warningStream,
-            builder: (context, snapshot) {
-              if (snapshot.hasError) {
+        ],
+      ),
+      body: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (!compact)
+            _DashboardRail(
+              selected: _selectedNav,
+              onSelected: (value) => setState(() => _selectedNav = value),
+            ),
+          Expanded(
+            child: StreamBuilder<List<FloodWarning>>(
+              stream: _warningStream,
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return ListView(
+                    padding: _pagePadding(context),
+                    children: [
+                      _DashboardHeading(user: widget.user),
+                      const SizedBox(height: 24),
+                      _StatusPanel(
+                        icon: Icons.cloud_off_rounded,
+                        title: 'Live flood status unavailable',
+                        message:
+                            'Your dashboard is ready, but we could not reach the latest warning feed.',
+                        actionLabel: 'Try again',
+                        onAction: _refreshWarnings,
+                      ),
+                    ],
+                  );
+                }
+                if (!snapshot.hasData) {
+                  return ListView(
+                    padding: _pagePadding(context),
+                    children: [
+                      _DashboardHeading(user: widget.user),
+                      const SizedBox(height: 24),
+                      const _MetricStrip(loading: true),
+                      const SizedBox(height: 20),
+                      const _StatusPanel(
+                        icon: Icons.radar_rounded,
+                        title: 'Checking live flood status',
+                        message:
+                            'Your home screen is ready. We are looking for active warnings in the background.',
+                        showProgress: true,
+                      ),
+                      const SizedBox(height: 20),
+                      _QuickActionsPanel(
+                        onEditProfile: _editProfile,
+                        onSimulate: () => setState(() => _selectedNav = 1),
+                        onGuidance: () => setState(() => _selectedNav = 4),
+                      ),
+                    ],
+                  );
+                }
+                final warnings = snapshot.data!;
+                _announceNewWarnings(warnings);
+                if (_selectedNav == 1) {
+                  return _SimulationPage(onSimulate: _simulateFlood);
+                }
+                if (_selectedNav == 2) {
+                  return _AlertsPage(warnings: warnings);
+                }
+                if (_selectedNav == 3) {
+                  return _AnalyticsPage(warnings: warnings);
+                }
+                if (_selectedNav == 4) {
+                  return const _GuidancePage();
+                }
                 return ListView(
-                  padding: const EdgeInsets.all(30),
+                  padding: _pagePadding(context),
                   children: [
                     _DashboardHeading(user: widget.user),
                     const SizedBox(height: 24),
-                    _StatusPanel(
-                      icon: Icons.cloud_off_rounded,
-                      title: 'Live flood status unavailable',
-                      message:
-                          'Your dashboard is ready, but we could not reach the latest warning feed.',
-                      actionLabel: 'Try again',
-                      onAction: _refreshWarnings,
-                    ),
-                  ],
-                );
-              }
-              if (!snapshot.hasData) {
-                return ListView(
-                  padding: const EdgeInsets.all(30),
-                  children: [
-                    _DashboardHeading(user: widget.user),
-                    const SizedBox(height: 24),
-                    const _MetricStrip(loading: true),
+                    _MetricStrip(warningCount: warnings.length),
                     const SizedBox(height: 20),
-                    const _StatusPanel(
-                      icon: Icons.radar_rounded,
-                      title: 'Checking live flood status',
-                      message:
-                          'Your home screen is ready. We are looking for active warnings in the background.',
-                      showProgress: true,
+                    _StatusPanel(
+                      icon: warnings.isEmpty
+                          ? Icons.verified_rounded
+                          : Icons.warning_amber_rounded,
+                      title: warnings.isEmpty
+                          ? 'All clear in your area'
+                          : 'Active flood warnings',
+                      message: warnings.isEmpty
+                          ? 'No active warnings have been published for your monitored area.'
+                          : 'Stay alert and review the warnings below for details.',
+                      accent: warnings.isEmpty
+                          ? _green
+                          : const Color(0xffffc857),
                     ),
                     const SizedBox(height: 20),
                     _QuickActionsPanel(
@@ -612,99 +694,61 @@ class _FloodDashboardState extends State<FloodDashboard> {
                       onSimulate: () => setState(() => _selectedNav = 1),
                       onGuidance: () => setState(() => _selectedNav = 4),
                     ),
-                  ],
-                );
-              }
-              final warnings = snapshot.data!;
-              _announceNewWarnings(warnings);
-              if (_selectedNav == 1) {
-                return _SimulationPage(onSimulate: _simulateFlood);
-              }
-              if (_selectedNav == 2) {
-                return _AlertsPage(warnings: warnings);
-              }
-              if (_selectedNav == 3) {
-                return _AnalyticsPage(warnings: warnings);
-              }
-              if (_selectedNav == 4) {
-                return const _GuidancePage();
-              }
-              return ListView(
-                padding: const EdgeInsets.all(30),
-                children: [
-                  _DashboardHeading(user: widget.user),
-                  const SizedBox(height: 24),
-                  _MetricStrip(warningCount: warnings.length),
-                  const SizedBox(height: 20),
-                  _StatusPanel(
-                    icon: warnings.isEmpty
-                        ? Icons.verified_rounded
-                        : Icons.warning_amber_rounded,
-                    title: warnings.isEmpty
-                        ? 'All clear in your area'
-                        : 'Active flood warnings',
-                    message: warnings.isEmpty
-                        ? 'No active warnings have been published for your monitored area.'
-                        : 'Stay alert and review the warnings below for details.',
-                    accent: warnings.isEmpty ? _green : const Color(0xffffc857),
-                  ),
-                  const SizedBox(height: 20),
-                  _QuickActionsPanel(
-                    onEditProfile: _editProfile,
-                    onSimulate: () => setState(() => _selectedNav = 1),
-                    onGuidance: () => setState(() => _selectedNav = 4),
-                  ),
-                  if (warnings.isNotEmpty) ...[
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Latest alerts',
-                      style: TextStyle(
-                        color: _text,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
+                    if (warnings.isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Latest alerts',
+                        style: TextStyle(
+                          color: _text,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 12),
-                  ],
-                  if (warnings.isEmpty)
-                    const _EmptyCard()
-                  else
-                    ...warnings.map(
-                      (warning) => Card(
-                        child: ListTile(
-                          leading: const Icon(
-                            Icons.warning_amber_rounded,
-                            color: Colors.deepOrange,
-                          ),
-                          title: Text(warning.title),
-                          subtitle: Text(
-                            '${warning.severity.name.toUpperCase()} • ${warning.affectedArea}',
-                          ),
-                          onTap: () => showDialog<void>(
-                            context: context,
-                            builder: (_) => AlertDialog(
-                              title: Text(warning.title),
-                              content: Text(warning.description),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: const Text('Close'),
-                                ),
-                              ],
+                      const SizedBox(height: 12),
+                    ],
+                    if (warnings.isEmpty)
+                      const _EmptyCard()
+                    else
+                      ...warnings.map(
+                        (warning) => Card(
+                          child: ListTile(
+                            leading: const Icon(
+                              Icons.warning_amber_rounded,
+                              color: Colors.deepOrange,
+                            ),
+                            title: Text(warning.title),
+                            subtitle: Text(
+                              '${warning.severity.name.toUpperCase()} • ${warning.affectedArea}',
+                            ),
+                            onTap: () => showDialog<void>(
+                              context: context,
+                              builder: (_) => AlertDialog(
+                                title: Text(warning.title),
+                                content: Text(warning.description),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: const Text('Close'),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                ],
-              );
-            },
+                  ],
+                );
+              },
+            ),
           ),
-        ),
-      ],
-    ),
-  );
+        ],
+      ),
+    );
+  }
 }
+
+EdgeInsets _pagePadding(BuildContext context) =>
+    EdgeInsets.all(MediaQuery.sizeOf(context).width < 600 ? 16 : 30);
 
 class _SimulationPage extends StatefulWidget {
   const _SimulationPage({required this.onSimulate});
@@ -758,7 +802,7 @@ class _SimulationPageState extends State<_SimulationPage> {
 
   @override
   Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(30),
+    padding: _pagePadding(context),
     children: [
       Text(
         'Create flood alert',
@@ -896,7 +940,7 @@ class _AlertsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(30),
+    padding: _pagePadding(context),
     children: [
       Text(
         'Alerts',
@@ -1003,7 +1047,7 @@ class _AnalyticsPage extends StatelessWidget {
     }
 
     return ListView(
-      padding: const EdgeInsets.all(30),
+      padding: _pagePadding(context),
       children: [
         Text(
           'Analytics',
@@ -1100,7 +1144,7 @@ class _GuidancePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(30),
+    padding: _pagePadding(context),
     children: [
       Text(
         'Safety guidance',
@@ -1437,13 +1481,18 @@ class _ActionButton extends StatelessWidget {
 }
 
 class _DashboardRail extends StatelessWidget {
-  const _DashboardRail({required this.selected, required this.onSelected});
+  const _DashboardRail({
+    required this.selected,
+    required this.onSelected,
+    this.compact = false,
+  });
   final int selected;
   final ValueChanged<int> onSelected;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) => Container(
-    width: 128,
+    width: compact ? double.infinity : 128,
     color: Theme.of(context).brightness == Brightness.dark
         ? const Color(0xff0c1d2d)
         : const Color(0xffeaf1f2),
