@@ -65,7 +65,12 @@ class NotificationService {
       );
       return null;
     }
-    return _messaging.getToken(vapidKey: vapidKey);
+    return _messaging.getToken(
+      vapidKey: vapidKey,
+      // Explicitly use the worker shipped with this Flutter web build. This
+      // matters on GitHub Pages because the app is hosted below a project path.
+      serviceWorkerScriptPath: 'firebase-messaging-sw.js',
+    );
   }
 
   String get _platformName {
