@@ -1474,51 +1474,54 @@ class _MetricCard extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: .12),
-              borderRadius: BorderRadius.circular(12),
+  Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 600;
+    return Card(
+      child: Padding(
+        padding: EdgeInsets.all(compact ? 10 : 16),
+        child: Row(
+          children: [
+            Container(
+              width: compact ? 34 : 46,
+              height: compact ? 34 : 46,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: compact ? 20 : 26),
             ),
-            child: Icon(icon, color: color, size: 26),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  label,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontSize: 12,
+            SizedBox(width: compact ? 8 : 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    label,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: compact ? 10 : 12,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
+                  SizedBox(height: compact ? 2 : 4),
+                  Text(
+                    value,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: compact ? 17 : 20,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _StatusPanel extends StatelessWidget {
@@ -1540,55 +1543,58 @@ class _StatusPanel extends StatelessWidget {
   final bool showProgress;
 
   @override
-  Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(24),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: .12),
-              borderRadius: BorderRadius.circular(14),
+  Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 600;
+    return Card(
+      child: Padding(
+        padding: EdgeInsets.all(compact ? 16 : 24),
+        child: Row(
+          children: [
+            Container(
+              padding: EdgeInsets.all(compact ? 10 : 14),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(icon, color: accent, size: compact ? 24 : 30),
             ),
-            child: Icon(icon, color: accent, size: 30),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface,
-                    fontSize: 19,
-                    fontWeight: FontWeight.w800,
+            SizedBox(width: compact ? 10 : 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontSize: compact ? 16 : 19,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  message,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    height: 1.4,
+                  SizedBox(height: compact ? 4 : 6),
+                  Text(
+                    message,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      height: 1.4,
+                    ),
                   ),
-                ),
-                if (actionLabel != null)
-                  TextButton(onPressed: onAction, child: Text(actionLabel!)),
-              ],
+                  if (actionLabel != null)
+                    TextButton(onPressed: onAction, child: Text(actionLabel!)),
+                ],
+              ),
             ),
-          ),
-          if (showProgress)
-            const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            ),
-        ],
+            if (showProgress)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _QuickActionsPanel extends StatelessWidget {
@@ -1602,51 +1608,54 @@ class _QuickActionsPanel extends StatelessWidget {
   final VoidCallback? onGuidance;
 
   @override
-  Widget build(BuildContext context) => Card(
-    child: Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Quick actions',
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
+  Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 600;
+    return Card(
+      child: Padding(
+        padding: EdgeInsets.all(compact ? 16 : 24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Quick actions',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontSize: compact ? 18 : 20,
+                fontWeight: FontWeight.w800,
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              _ActionButton(
-                icon: Icons.location_on_outlined,
-                label: 'Set location',
-                onTap: onEditProfile,
-              ),
-              _ActionButton(
-                icon: Icons.notifications_none_rounded,
-                label: 'Alert preferences',
-                onTap: onEditProfile,
-              ),
-              _ActionButton(
-                icon: Icons.water_damage_outlined,
-                label: 'Simulate flood',
-                onTap: onSimulate,
-              ),
-              _ActionButton(
-                icon: Icons.menu_book_outlined,
-                label: 'Safety guidance',
-                onTap: onGuidance,
-              ),
-            ],
-          ),
-        ],
+            SizedBox(height: compact ? 10 : 16),
+            Wrap(
+              spacing: compact ? 6 : 10,
+              runSpacing: compact ? 6 : 10,
+              children: [
+                _ActionButton(
+                  icon: Icons.location_on_outlined,
+                  label: 'Set location',
+                  onTap: onEditProfile,
+                ),
+                _ActionButton(
+                  icon: Icons.notifications_none_rounded,
+                  label: 'Alert preferences',
+                  onTap: onEditProfile,
+                ),
+                _ActionButton(
+                  icon: Icons.water_damage_outlined,
+                  label: 'Simulate flood',
+                  onTap: onSimulate,
+                ),
+                _ActionButton(
+                  icon: Icons.menu_book_outlined,
+                  label: 'Safety guidance',
+                  onTap: onGuidance,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _ActionButton extends StatelessWidget {
@@ -1656,16 +1665,22 @@ class _ActionButton extends StatelessWidget {
   final VoidCallback? onTap;
 
   @override
-  Widget build(BuildContext context) => FilledButton.icon(
-    onPressed: onTap,
-    icon: Icon(icon, size: 18),
-    label: Text(label),
-    style: FilledButton.styleFrom(
-      backgroundColor: _cyan,
-      foregroundColor: _navy,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-    ),
-  );
+  Widget build(BuildContext context) {
+    final compact = MediaQuery.sizeOf(context).width < 600;
+    return FilledButton.icon(
+      onPressed: onTap,
+      icon: Icon(icon, size: compact ? 16 : 18),
+      label: Text(label, style: TextStyle(fontSize: compact ? 12 : 14)),
+      style: FilledButton.styleFrom(
+        backgroundColor: _cyan,
+        foregroundColor: _navy,
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 10 : 16,
+          vertical: compact ? 10 : 13,
+        ),
+      ),
+    );
+  }
 }
 
 class _DashboardRail extends StatelessWidget {
