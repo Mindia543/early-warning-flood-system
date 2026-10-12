@@ -102,8 +102,8 @@ class DatabaseService {
     return reference.id;
   }
 
-  /// Creates a clearly marked published simulation for the demo environment.
-  /// Firestore rules allow signed-in users to create simulation warnings only.
+  /// Publishes an alert from the in-app alert control.
+  /// Firestore rules allow signed-in users to create these published alerts.
   Future<String> simulateFlood({
     required String title,
     required String description,
@@ -119,15 +119,15 @@ class DatabaseService {
 
     final now = DateTime.now();
     final reference = await _warnings.add({
-      'title': title.trim().isEmpty ? 'Simulated flood event' : title.trim(),
+      'title': title.trim().isEmpty ? 'Flood warning' : title.trim(),
       'description': description.trim().isEmpty
-          ? 'This is a FloodWatch simulation for testing alerts.'
+          ? 'This FloodWatch alert was published from the alert control.'
           : description.trim(),
       'severity': severity.name,
       'affectedArea': affectedArea.trim(),
       'issueTime': Timestamp.fromDate(now),
       'expiryTime': Timestamp.fromDate(now.add(duration)),
-      'source': 'FloodWatch simulation',
+      'source': 'FloodWatch alert control',
       'status': WarningStatus.published.name,
       'simulation': true,
       'createdBy': user.uid,

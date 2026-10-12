@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'models/flood_warning.dart';
 import 'services/auth_service.dart';
@@ -307,6 +308,7 @@ class _FloodDashboardState extends State<FloodDashboard> {
       await _notifications.initialize(
         onMessageReceived: (message) {
           if (!mounted) return;
+          _playAlertSound();
           final title = message.notification?.title ?? 'New flood warning';
           ScaffoldMessenger.of(
             context,
@@ -424,14 +426,22 @@ class _FloodDashboardState extends State<FloodDashboard> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Simulation published to all signed-in devices.'),
+          content: Text('Live alert published to all signed-in devices.'),
         ),
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Simulation failed: $error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Alert could not be published: $error')),
+      );
+    }
+  }
+
+  Future<void> _playAlertSound() async {
+    try {
+      await SystemSound.play(SystemSoundType.alert);
+    } catch (error) {
+      debugPrint('Could not play alert sound: $error');
     }
   }
 
@@ -452,6 +462,8 @@ class _FloodDashboardState extends State<FloodDashboard> {
       ..clear()
       ..addAll(currentIds);
     if (newWarnings.isEmpty || !mounted) return;
+
+    _playAlertSound();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -518,9 +530,9 @@ class _FloodDashboardState extends State<FloodDashboard> {
           onPressed: widget.onToggleTheme,
         ),
         IconButton(
-          icon: const Icon(Icons.notifications_none_rounded),
-          tooltip: 'Refresh alerts',
-          onPressed: _refreshWarnings,
+          icon: const Icon(Icons.notifications_active_outlined),
+          tooltip: 'Open alerts',
+          onPressed: () => setState(() => _selectedNav = 2),
         ),
         PopupMenuButton<String>(
           tooltip: 'Account',
@@ -710,11 +722,11 @@ class _SimulationPage extends StatefulWidget {
 }
 
 class _SimulationPageState extends State<_SimulationPage> {
-  final _areaController = TextEditingController(text: 'Demo Area');
-  final _titleController = TextEditingController(text: 'Simulated flood event');
+  final _areaController = TextEditingController();
+  final _titleController = TextEditingController(text: 'Flood warning');
   final _descriptionController = TextEditingController(
     text:
-        'Water levels are rising in this simulation. Stay alert and follow safety guidance.',
+        'Water levels are rising. Stay alert, move to higher ground if necessary, and follow local safety guidance.',
   );
   WarningSeverity _severity = WarningSeverity.high;
   int _durationMinutes = 30;
@@ -749,14 +761,14 @@ class _SimulationPageState extends State<_SimulationPage> {
     padding: const EdgeInsets.all(30),
     children: [
       Text(
-        'Flood simulation',
+        'Create flood alert',
         style: Theme.of(
           context,
         ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
       ),
       const SizedBox(height: 8),
       Text(
-        'Publish a clearly marked test warning. Every signed-in device will see it in the app.',
+        'Publish a live warning that appears immediately in the Alerts screen on every signed-in device.',
         style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
       ),
       const SizedBox(height: 22),
@@ -768,10 +780,10 @@ class _SimulationPageState extends State<_SimulationPage> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.science_outlined, color: _cyan),
+                  const Icon(Icons.campaign_outlined, color: _cyan),
                   const SizedBox(width: 10),
                   Text(
-                    'Simulation controls',
+                    'Alert details',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -857,7 +869,7 @@ class _SimulationPageState extends State<_SimulationPage> {
                       : const Icon(Icons.campaign_outlined),
                   label: Text(
                     _submitting
-                        ? 'Publishing simulation...'
+                        ? 'Publishing alert...'
                         : 'Send alert to all devices',
                   ),
                 ),
@@ -868,10 +880,10 @@ class _SimulationPageState extends State<_SimulationPage> {
       ),
       const SizedBox(height: 16),
       _StatusPanel(
-        icon: Icons.info_outline_rounded,
-        title: 'Demo mode',
+        icon: Icons.notifications_active_outlined,
+        title: 'Alert delivery',
         message:
-            'Simulation alerts are labeled as FloodWatch simulations and expire automatically. Use this page to test multiple signed-in devices.',
+            'Published alerts are shared with every signed-in device and expire automatically after the selected duration.',
         accent: const Color(0xffffc857),
       ),
     ],
@@ -904,16 +916,17 @@ class _AlertsPage extends StatelessWidget {
         ...warnings.map(
           (warning) => Card(
             child: ListTile(
-              leading: Icon(
-                warning.isSimulation
-                    ? Icons.science_outlined
-                    : Icons.warning_amber_rounded,
-                color: warning.isSimulation ? _cyan : Colors.deepOrange,
-              ),
+              leading:
+                  warning.severity == WarningSeverity.high ||
+                      warning.severity == WarningSeverity.severe
+                  ? const _BlinkingCautionIcon()
+                  : const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.deepOrange,
+                    ),
               title: Text(warning.title),
               subtitle: Text(
-                '${warning.severity.name.toUpperCase()} • ${warning.affectedArea}'
-                '${warning.isSimulation ? ' • SIMULATION' : ''}',
+                '${warning.severity.name.toUpperCase()} • ${warning.affectedArea}',
               ),
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => showDialog<void>(
@@ -936,15 +949,43 @@ class _AlertsPage extends StatelessWidget {
   );
 }
 
+class _BlinkingCautionIcon extends StatefulWidget {
+  const _BlinkingCautionIcon();
+
+  @override
+  State<_BlinkingCautionIcon> createState() => _BlinkingCautionIconState();
+}
+
+class _BlinkingCautionIconState extends State<_BlinkingCautionIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 700),
+  )..repeat(reverse: true);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => FadeTransition(
+    opacity: Tween<double>(begin: .35, end: 1).animate(_controller),
+    child: const Icon(
+      Icons.warning_amber_rounded,
+      color: Colors.deepOrange,
+      size: 30,
+    ),
+  );
+}
+
 class _AnalyticsPage extends StatelessWidget {
   const _AnalyticsPage({required this.warnings});
   final List<FloodWarning> warnings;
 
   @override
   Widget build(BuildContext context) {
-    final simulations = warnings
-        .where((warning) => warning.isSimulation)
-        .length;
     final critical = warnings
         .where(
           (warning) =>
@@ -1000,9 +1041,9 @@ class _AnalyticsPage extends StatelessWidget {
                 color: Colors.deepOrange,
               ),
               _MetricCard(
-                icon: Icons.science_outlined,
-                label: 'Simulations',
-                value: '$simulations',
+                icon: Icons.campaign_outlined,
+                label: 'Live alerts',
+                value: '${warnings.length}',
                 color: _cyan,
               ),
               _MetricCard(
@@ -1416,8 +1457,8 @@ class _DashboardRail extends StatelessWidget {
           onTap: () => onSelected(0),
         ),
         _RailItem(
-          icon: Icons.science_outlined,
-          label: 'Simulate',
+          icon: Icons.campaign_outlined,
+          label: 'Create alert',
           selected: selected == 1,
           onTap: () => onSelected(1),
         ),
