@@ -1,7 +1,7 @@
 import { initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore, QueryDocumentSnapshot } from "firebase-admin/firestore";
 import { getMessaging, MulticastMessage } from "firebase-admin/messaging";
-import { onDocumentUpdated } from "firebase-functions/v2/firestore";
+import { onDocumentWritten } from "firebase-functions/v2/firestore";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { defineSecret, defineString } from "firebase-functions/params";
 import nodemailer from "nodemailer";
@@ -53,22 +53,22 @@ export const publishWarning = onCall(async (request) => {
   return { warningId };
 });
 
-/** Sends one push notification to every enabled device for users in the area. */
-export const sendWarningNotifications = onDocumentUpdated(
+/** Sends one push notification to every enabled device for every signed-in user. */
+export const sendWarningNotifications = onDocumentWritten(
   { document: "warnings/{warningId}", secrets: [smtpUser, smtpPassword] },
   async (event) => {
-    const before = event.data?.before.data() as WarningData | undefined;
+    const beforeSnapshot = event.data?.before;
+    const before = beforeSnapshot?.exists
+      ? beforeSnapshot.data() as WarningData
+      : undefined;
     const afterSnapshot = event.data?.after;
     const after = afterSnapshot?.data() as WarningData | undefined;
-    if (!before || !after || before.status === "published" || after.status !== "published") {
+    if (!after || after.status !== "published" || before?.status === "published") {
       return;
     }
 
     const warningId = event.params.warningId;
-    const users = await db
-      .collection("users")
-      .where("location", "==", after.affectedArea)
-      .get();
+    const users = await db.collection("users").get();
 
     for (const user of users.docs) {
       await notifyUser(user, warningId, after);
@@ -110,8 +110,21 @@ async function notifyUser(
       severity: warning.severity,
       click_action: "FLUTTER_NOTIFICATION_CLICK",
     },
-    android: { priority: "high", notification: { channelId: "flood_warnings" } },
-    webpush: { fcmOptions: { link: "/alerts/" + warningId } },
+    android: {
+      priority: "high",
+      notification: { channelId: "flood_warnings", sound: "default" },
+    },
+    webpush: {
+      notification: {
+        title: `Flood warning: ${warning.severity}`,
+        body: `${warning.title} • ${warning.affectedArea}`,
+        requireInteraction: true,
+        silent: false,
+      },
+      fcmOptions: {
+        link: `https://mindia543.github.io/early-warning-flood-system/?warningId=${warningId}`,
+      },
+    },
   };
 
   try {

@@ -59,14 +59,8 @@ class NotificationService {
   Future<String?> _getToken() async {
     if (!kIsWeb) return _messaging.getToken();
     const vapidKey = String.fromEnvironment('FIREBASE_WEB_VAPID_KEY');
-    if (vapidKey.isEmpty) {
-      debugPrint(
-        'Web push is disabled until FIREBASE_WEB_VAPID_KEY is supplied.',
-      );
-      return null;
-    }
     return _messaging.getToken(
-      vapidKey: vapidKey,
+      vapidKey: vapidKey.isEmpty ? null : vapidKey,
       // Explicitly use the worker shipped with this Flutter web build. This
       // matters on GitHub Pages because the app is hosted below a project path.
       serviceWorkerScriptPath: 'firebase-messaging-sw.js',

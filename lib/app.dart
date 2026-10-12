@@ -307,6 +307,9 @@ class _FloodDashboardState extends State<FloodDashboard> {
   Future<void> _initializeNotifications() async {
     try {
       await _notifications.initialize(
+        onWarningOpened: (_) {
+          if (mounted) setState(() => _selectedNav = 2);
+        },
         onMessageReceived: (message) {
           if (!mounted) return;
           _playAlertSound();

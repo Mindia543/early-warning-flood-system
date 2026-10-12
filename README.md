@@ -51,20 +51,29 @@ and Firestore rules.
 
 Users register with Gmail or another email address through Firebase
 Authentication. FCM sends to registered device tokens, not to a Gmail inbox.
-Signing in on two devices registers two tokens for the account. When an admin
-publishes a warning and the Cloud Function is deployed, it matches users whose
-`location` exactly matches the warning `affectedArea`, sends to all enabled
-devices, records delivery results in `notification_logs`, and disables invalid
-tokens. Without the function, the app can still use Firestore, but it cannot send
-server-triggered push notifications or email.
+Signing in on multiple devices registers a token for each device. When a warning
+is published and the Cloud Function is deployed, it sends a normal push
+notification with sound to every enabled device, records delivery results in
+`notification_logs`, and disables invalid tokens. Without the function, the app
+can still use Firestore and show live in-app alerts, but it cannot send
+server-triggered notifications while the app is closed.
 
 Use two physical or supported devices with separate accounts to verify the
 Firestore warning, delivery log, foreground dashboard, and background OS
 notification. Do not claim delivery success until that test passes.
 
-For web push, replace the placeholders in `web/firebase-messaging-sw.js` and
-add the deployed domain to Firebase authorized domains. The GitHub Pages
-workflow in `.github/workflows/deploy-web.yml` builds from `main` or `master`.
+For web push, add the deployed domain to Firebase Authentication > Settings >
+Authorized domains. In Firebase Console > Project settings > Cloud Messaging,
+open Web Push certificates and copy the public key. Add it to GitHub as a
+repository secret named `FIREBASE_WEB_VAPID_KEY`. The Pages workflow passes that
+secret into the Flutter build. Users will see one browser permission prompt;
+after they choose **Allow**, background notifications can appear outside the
+web page.
+
+The notification worker is already configured in
+`web/firebase-messaging-sw.js`; do not put private server credentials there.
+The GitHub Pages workflow in `.github/workflows/deploy-web.yml` builds from
+`main` or `master`.
 In the repository, choose **Settings > Pages > Build and deployment > Source >
 GitHub Actions** to publish and get the public link. Firebase Hosting is an
 alternative:
