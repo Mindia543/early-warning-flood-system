@@ -16,10 +16,5 @@ Future<void> showBrowserAlert({
       html.Notification.permission != 'granted') {
     return;
   }
-  html.Notification(
-    title,
-    body: body,
-    icon: 'icons/Icon-192.png',
-    requireInteraction: true,
-  );
+  html.Notification(title, body: body, icon: 'icons/Icon-192.png');
 }
