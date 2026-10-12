@@ -522,7 +522,7 @@ class _FloodDashboardState extends State<FloodDashboard> {
     return Scaffold(
       drawer: compact
           ? Drawer(
-              width: MediaQuery.sizeOf(context).width < 380 ? 200 : 220,
+              width: MediaQuery.sizeOf(context).width < 380 ? 230 : 260,
               child: SafeArea(
                 child: _DashboardRail(
                   compact: true,
