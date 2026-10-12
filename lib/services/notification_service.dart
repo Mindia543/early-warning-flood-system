@@ -25,6 +25,7 @@ class NotificationService {
 
   Future<void> initialize({
     void Function(String warningId)? onWarningOpened,
+    void Function(RemoteMessage message)? onMessageReceived,
   }) async {
     await _messaging.requestPermission(alert: true, badge: true, sound: true);
 
@@ -33,6 +34,7 @@ class NotificationService {
 
     _tokenSubscription = _messaging.onTokenRefresh.listen(_saveToken);
     FirebaseMessaging.onMessage.listen((message) {
+      onMessageReceived?.call(message);
       debugPrint(
         'Flood warning received while app is open: ${message.messageId}',
       );

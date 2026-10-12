@@ -297,7 +297,25 @@ class _FloodDashboardState extends State<FloodDashboard> {
     _notifications = NotificationService(database: _database);
     _warningStream = _database.watchActiveWarnings();
     _ensureProfile();
-    _notifications.initialize();
+    _initializeNotifications();
+  }
+
+  Future<void> _initializeNotifications() async {
+    try {
+      await _notifications.initialize(
+        onMessageReceived: (message) {
+          if (!mounted) return;
+          final title = message.notification?.title ?? 'New flood warning';
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(title)));
+        },
+      );
+    } catch (error) {
+      // A notification permission/token problem must not prevent the dashboard
+      // from rendering or signing the user out.
+      debugPrint('Could not initialize notifications: $error');
+    }
   }
 
   Future<void> _ensureProfile() async {

@@ -1,14 +1,15 @@
-/* Replace these public web-app values after running `flutterfire configure`. */
+// Firebase web configuration is public client configuration. Keep secrets out
+// of this worker; delivery is secured by Firebase Auth and server rules.
 importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
 
 firebase.initializeApp({
-  apiKey: 'REPLACE_WITH_FIREBASE_WEB_API_KEY',
-  authDomain: 'REPLACE_WITH_FIREBASE_PROJECT.firebaseapp.com',
-  projectId: 'REPLACE_WITH_FIREBASE_PROJECT',
-  storageBucket: 'REPLACE_WITH_FIREBASE_PROJECT.firebasestorage.app',
-  messagingSenderId: 'REPLACE_WITH_MESSAGING_SENDER_ID',
-  appId: 'REPLACE_WITH_FIREBASE_WEB_APP_ID',
+  apiKey: 'AIzaSyD7ydc5hkCpxME1TCRI-dlfsIwnHjmUsiA',
+  authDomain: 'early-warning-flood-system.firebaseapp.com',
+  projectId: 'early-warning-flood-system',
+  storageBucket: 'early-warning-flood-system.firebasestorage.app',
+  messagingSenderId: '425949639128',
+  appId: '1:425949639128:web:99502f98090632755b02ad',
 });
 
 firebase.messaging().onBackgroundMessage((payload) => {

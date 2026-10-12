@@ -31,7 +31,7 @@ jobs:
       # GitHub Pages should always serve the newest bundle. Flutter's default
       # offline-first service worker can otherwise keep an older UI in a
       # browser cache after a successful deployment.
-      - run: flutter build web --release --pwa-strategy=none --base-href "/${{ github.event.repository.name }}/"
+      - run: flutter build web --release --pwa-strategy=none --base-href "/${{ github.event.repository.name }}/" --dart-define=FIREBASE_WEB_VAPID_KEY="${{ secrets.FIREBASE_WEB_VAPID_KEY }}"
       - uses: actions/upload-pages-artifact@v4
         with:
           path: ./build/web

@@ -33,41 +33,46 @@
   <link rel="manifest" href="manifest.json">
 </head>
 <body>
+  <div id="boot-status" style="font-family:Arial,sans-serif;color:#0b2232;text-align:center;padding:32px">
+    Loading FloodWatch…
+  </div>
   <script>
-    // Remove service workers from older Flutter deployments before loading
-    // the app, then reload once so the old worker cannot serve one more bundle.
-    (async function () {
-      const resetKey = 'floodwatch-cache-reset-v1';
-      const alreadyReset = sessionStorage.getItem(resetKey) === '1';
-      try {
-        const registrations = 'serviceWorker' in navigator
-          ? await navigator.serviceWorker.getRegistrations()
-          : [];
-        const cacheKeys = window.caches ? await caches.keys() : [];
-        const hadOldCache = registrations.length > 0 || cacheKeys.length > 0;
+    // Unregister older Flutter workers without blocking the current app boot.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (registrations) {
+        registrations.forEach(function (registration) { registration.unregister(); });
+      }).catch(function () {});
+    }
+    if (window.caches) {
+      caches.keys().then(function (keys) {
+        keys.forEach(function (key) { caches.delete(key); });
+      }).catch(function () {});
+    }
 
-        if (hadOldCache && !alreadyReset) {
-          sessionStorage.setItem(resetKey, '1');
-          await Promise.race([
-            Promise.all([
-              ...registrations.map((registration) => registration.unregister()),
-              ...cacheKeys.map((key) => caches.delete(key)),
-            ]),
-            new Promise((resolve) => setTimeout(resolve, 1500)),
-          ]);
-          window.location.reload();
-          return;
-        }
-        sessionStorage.removeItem(resetKey);
-      } catch (error) {
-        console.warn('Unable to clear an older app cache:', error);
+    window.addEventListener('error', function (event) {
+      var status = document.getElementById('boot-status');
+      if (status && event.error) {
+        status.innerHTML = 'FloodWatch could not start. Please reload this page.';
+        status.style.color = '#b42318';
+        console.error(event.error);
       }
+    });
 
+    try {
       const script = document.createElement('script');
-      script.src = 'flutter_bootstrap.js?build=d270251';
+      script.src = 'flutter_bootstrap.js?build=56dbbb6';
       script.async = true;
+      script.onerror = function () {
+        var status = document.getElementById('boot-status');
+        if (status) {
+          status.innerHTML = 'FloodWatch could not load its web bundle. Please reload this page.';
+          status.style.color = '#b42318';
+        }
+      };
       document.body.appendChild(script);
-    })();
+    } catch (error) {
+      console.error(error);
+    }
   </script>
 </body>
 </html>
