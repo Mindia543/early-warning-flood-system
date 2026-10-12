@@ -293,7 +293,9 @@ class _FloodDashboardState extends State<FloodDashboard> {
   late Stream<List<FloodWarning>> _warningStream;
   final Set<String> _knownWarningIds = <String>{};
   bool _receivedFirstWarningSnapshot = false;
-  int _activeWarningCount = 0;
+  final Set<String> _unreadWarningIds = <String>{};
+  int _unreadWarningCount = 0;
+  int get _activeWarningCount => _unreadWarningCount;
   int _selectedNav = 0;
 
   @override
@@ -309,9 +311,7 @@ class _FloodDashboardState extends State<FloodDashboard> {
   Future<void> _initializeNotifications() async {
     try {
       await _notifications.initialize(
-        onWarningOpened: (_) {
-          if (mounted) setState(() => _selectedNav = 2);
-        },
+        onWarningOpened: (_) => _selectNavigation(2),
         onMessageReceived: (message) {
           if (!mounted) return;
           _playAlertSound();
@@ -466,14 +466,35 @@ class _FloodDashboardState extends State<FloodDashboard> {
     );
   }
 
+  void _selectNavigation(int value) {
+    if (!mounted) return;
+    setState(() {
+      _selectedNav = value;
+      if (value == 2) {
+        _unreadWarningIds.clear();
+        _unreadWarningCount = 0;
+      }
+    });
+  }
+
+  void _syncUnreadWarningCount() {
+    if (_unreadWarningCount == _unreadWarningIds.length) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final count = _unreadWarningIds.length;
+      if (!mounted || _unreadWarningCount == count) return;
+      setState(() => _unreadWarningCount = count);
+    });
+  }
+
   void _announceNewWarnings(List<FloodWarning> warnings) {
     final currentIds = warnings.map((warning) => warning.id).toSet();
-    if (_activeWarningCount != currentIds.length) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || _activeWarningCount == currentIds.length) return;
-        setState(() => _activeWarningCount = currentIds.length);
-      });
-    }
+    final newWarningIds = _receivedFirstWarningSnapshot
+        ? currentIds.difference(_knownWarningIds)
+        : <String>{};
+    _unreadWarningIds
+      ..removeWhere((id) => !currentIds.contains(id))
+      ..addAll(newWarningIds);
+    _syncUnreadWarningCount();
     if (!_receivedFirstWarningSnapshot) {
       _knownWarningIds
         ..clear()
@@ -528,7 +549,7 @@ class _FloodDashboardState extends State<FloodDashboard> {
                   compact: true,
                   selected: _selectedNav,
                   onSelected: (value) {
-                    setState(() => _selectedNav = value);
+                    _selectNavigation(value);
                     Navigator.of(context).pop();
                   },
                 ),
@@ -606,9 +627,9 @@ class _FloodDashboardState extends State<FloodDashboard> {
               IconButton(
                 icon: const Icon(Icons.notifications_active_outlined),
                 tooltip: 'Open alerts',
-                onPressed: () => setState(() => _selectedNav = 2),
+                onPressed: () => _selectNavigation(2),
               ),
-              if (_activeWarningCount > 0)
+              if (_unreadWarningCount > 0)
                 Positioned(
                   right: 1,
                   top: 0,
@@ -679,7 +700,7 @@ class _FloodDashboardState extends State<FloodDashboard> {
           if (!compact)
             _DashboardRail(
               selected: _selectedNav,
-              onSelected: (value) => setState(() => _selectedNav = value),
+              onSelected: _selectNavigation,
             ),
           Expanded(
             child: StreamBuilder<List<FloodWarning>>(
