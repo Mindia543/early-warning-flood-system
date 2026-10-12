@@ -98,6 +98,17 @@ The app profile has separate push and email switches. Email results are stored
 in `notification_logs` with `channel: "email"`. Gmail requires 2-Step
 Verification and an App Password for this type of SMTP connection.
 
+## Free Gmail option on Firebase Spark
+
+If billing is not available, use the free Google Apps Script relay in
+`tools/google-apps-script/`. It reads published warnings through the signed-in
+FloodWatch account and sends matching alerts from Gmail every five minutes.
+Follow `tools/google-apps-script/README.md`; enter credentials only in Google
+Apps Script project properties, never in Flutter or GitHub. This avoids Firebase
+Cloud Functions and does not require the Blaze plan. The relay sends to the
+account's exact profile location and remembers warning IDs so it does not send
+duplicates.
+
 ## Checks
 
 ```bash
