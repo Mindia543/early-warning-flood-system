@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 
 import 'models/flood_warning.dart';
 import 'services/auth_service.dart';
+import 'services/browser_alert.dart';
 import 'services/database_service.dart';
 import 'services/flood_risk_service.dart';
 import 'services/notification_service.dart';
@@ -314,6 +315,10 @@ class _FloodDashboardState extends State<FloodDashboard> {
           if (!mounted) return;
           _playAlertSound();
           final title = message.notification?.title ?? 'New flood warning';
+          showBrowserAlert(
+            title: title,
+            body: 'Open FloodWatch to view the alert.',
+          );
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text(title)));
@@ -449,6 +454,16 @@ class _FloodDashboardState extends State<FloodDashboard> {
     }
   }
 
+  Future<void> _enableBrowserAlerts() async {
+    await requestBrowserAlertPermission();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Browser alerts are enabled on this device.'),
+      ),
+    );
+  }
+
   void _announceNewWarnings(List<FloodWarning> warnings) {
     final currentIds = warnings.map((warning) => warning.id).toSet();
     if (!_receivedFirstWarningSnapshot) {
@@ -468,6 +483,12 @@ class _FloodDashboardState extends State<FloodDashboard> {
     if (newWarnings.isEmpty || !mounted) return;
 
     _playAlertSound();
+    showBrowserAlert(
+      title: newWarnings.length == 1
+          ? 'New flood warning'
+          : '${newWarnings.length} new flood warnings',
+      body: newWarnings.first.title,
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -580,12 +601,17 @@ class _FloodDashboardState extends State<FloodDashboard> {
             tooltip: 'Account',
             onSelected: (value) {
               if (value == 'preferences') _editProfile();
+              if (value == 'browser-alerts') _enableBrowserAlerts();
               if (value == 'logout') widget.auth.signOut();
             },
             itemBuilder: (context) => const [
               PopupMenuItem(
                 value: 'preferences',
                 child: Text('Alert preferences'),
+              ),
+              PopupMenuItem(
+                value: 'browser-alerts',
+                child: Text('Enable desktop alerts'),
               ),
               PopupMenuItem(value: 'logout', child: Text('Sign out')),
             ],
