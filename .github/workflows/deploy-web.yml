@@ -28,7 +28,10 @@ jobs:
           channel: stable
           flutter-version: '3.38.5'
       - run: flutter pub get
-      - run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
+      # GitHub Pages should always serve the newest bundle. Flutter's default
+      # offline-first service worker can otherwise keep an older UI in a
+      # browser cache after a successful deployment.
+      - run: flutter build web --release --pwa-strategy=none --base-href "/${{ github.event.repository.name }}/"
       - uses: actions/upload-pages-artifact@v4
         with:
           path: ./build/web
