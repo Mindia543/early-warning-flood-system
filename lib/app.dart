@@ -490,6 +490,7 @@ class _FloodDashboardState extends State<FloodDashboard> {
     return Scaffold(
       drawer: compact
           ? Drawer(
+              width: MediaQuery.sizeOf(context).width < 380 ? 230 : 260,
               child: SafeArea(
                 child: _DashboardRail(
                   compact: true,
@@ -1689,30 +1690,35 @@ class _DashboardRail extends StatelessWidget {
         _RailItem(
           icon: Icons.grid_view_rounded,
           label: 'Dashboard',
+          compact: compact,
           selected: selected == 0,
           onTap: () => onSelected(0),
         ),
         _RailItem(
           icon: Icons.campaign_outlined,
           label: 'Create alert',
+          compact: compact,
           selected: selected == 1,
           onTap: () => onSelected(1),
         ),
         _RailItem(
           icon: Icons.warning_amber_rounded,
           label: 'Alerts',
+          compact: compact,
           selected: selected == 2,
           onTap: () => onSelected(2),
         ),
         _RailItem(
           icon: Icons.analytics_outlined,
           label: 'Analytics',
+          compact: compact,
           selected: selected == 3,
           onTap: () => onSelected(3),
         ),
         _RailItem(
           icon: Icons.menu_book_outlined,
           label: 'Guidance',
+          compact: compact,
           selected: selected == 4,
           onTap: () => onSelected(4),
         ),
@@ -1727,19 +1733,24 @@ class _RailItem extends StatelessWidget {
     required this.label,
     required this.selected,
     required this.onTap,
+    this.compact = false,
   });
   final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) => InkWell(
     onTap: onTap,
     child: Container(
       width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      padding: const EdgeInsets.symmetric(vertical: 13),
+      margin: EdgeInsets.symmetric(
+        horizontal: compact ? 8 : 10,
+        vertical: compact ? 2 : 4,
+      ),
+      padding: EdgeInsets.symmetric(vertical: compact ? 9 : 13),
       decoration: BoxDecoration(
         color: selected
             ? (Theme.of(context).brightness == Brightness.dark
@@ -1755,16 +1766,16 @@ class _RailItem extends StatelessWidget {
             color: selected
                 ? _cyan
                 : Theme.of(context).colorScheme.onSurfaceVariant,
-            size: 25,
+            size: compact ? 20 : 25,
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: compact ? 3 : 6),
           Text(
             label,
             style: TextStyle(
               color: selected
                   ? _cyan
                   : Theme.of(context).colorScheme.onSurfaceVariant,
-              fontSize: 11,
+              fontSize: compact ? 9.5 : 11,
               fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
             ),
           ),
