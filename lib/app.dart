@@ -293,6 +293,7 @@ class _FloodDashboardState extends State<FloodDashboard> {
   late Stream<List<FloodWarning>> _warningStream;
   final Set<String> _knownWarningIds = <String>{};
   bool _receivedFirstWarningSnapshot = false;
+  int _activeWarningCount = 0;
   int _selectedNav = 0;
 
   @override
@@ -443,6 +444,7 @@ class _FloodDashboardState extends State<FloodDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Alert could not be published: $error')),
       );
+      rethrow;
     }
   }
 
@@ -466,6 +468,12 @@ class _FloodDashboardState extends State<FloodDashboard> {
 
   void _announceNewWarnings(List<FloodWarning> warnings) {
     final currentIds = warnings.map((warning) => warning.id).toSet();
+    if (_activeWarningCount != currentIds.length) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _activeWarningCount == currentIds.length) return;
+        setState(() => _activeWarningCount = currentIds.length);
+      });
+    }
     if (!_receivedFirstWarningSnapshot) {
       _knownWarningIds
         ..clear()
@@ -514,7 +522,7 @@ class _FloodDashboardState extends State<FloodDashboard> {
     return Scaffold(
       drawer: compact
           ? Drawer(
-              width: MediaQuery.sizeOf(context).width < 380 ? 230 : 260,
+              width: MediaQuery.sizeOf(context).width < 380 ? 200 : 220,
               child: SafeArea(
                 child: _DashboardRail(
                   compact: true,
@@ -592,10 +600,44 @@ class _FloodDashboardState extends State<FloodDashboard> {
             tooltip: 'Switch theme',
             onPressed: widget.onToggleTheme,
           ),
-          IconButton(
-            icon: const Icon(Icons.notifications_active_outlined),
-            tooltip: 'Open alerts',
-            onPressed: () => setState(() => _selectedNav = 2),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_active_outlined),
+                tooltip: 'Open alerts',
+                onPressed: () => setState(() => _selectedNav = 2),
+              ),
+              if (_activeWarningCount > 0)
+                Positioned(
+                  right: 1,
+                  top: 0,
+                  child: Container(
+                    constraints: const BoxConstraints(minWidth: 18),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Theme.of(context).scaffoldBackgroundColor,
+                        width: 2,
+                      ),
+                    ),
+                    child: Text(
+                      _activeWarningCount > 99 ? '99+' : '$_activeWarningCount',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
           PopupMenuButton<String>(
             tooltip: 'Account',
@@ -809,6 +851,7 @@ class _SimulationPageState extends State<_SimulationPage> {
   WarningSeverity _severity = WarningSeverity.high;
   int _durationMinutes = 30;
   bool _submitting = false;
+  int _publishedAlertCount = 0;
   FloodRiskAssessment? _riskAssessment;
 
   @override
@@ -942,7 +985,14 @@ class _SimulationPageState extends State<_SimulationPage> {
   );
 
   Future<void> _submit() async {
-    if (_areaController.text.trim().isEmpty) return;
+    if (_areaController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add the affected area before publishing.'),
+        ),
+      );
+      return;
+    }
     setState(() => _submitting = true);
     try {
       await widget.onSimulate(
@@ -952,6 +1002,14 @@ class _SimulationPageState extends State<_SimulationPage> {
         _descriptionController.text,
         Duration(minutes: _durationMinutes),
       );
+      if (!mounted) return;
+      setState(() {
+        _publishedAlertCount += 1;
+        _titleController.text = 'Flood warning';
+        _descriptionController.text =
+            'Water levels are rising. Stay alert, move to higher ground if necessary, and follow local safety guidance.';
+        _riskAssessment = null;
+      });
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
@@ -1071,10 +1129,21 @@ class _SimulationPageState extends State<_SimulationPage> {
                   label: Text(
                     _submitting
                         ? 'Publishing alert...'
-                        : 'Send alert to all devices',
+                        : _publishedAlertCount == 0
+                        ? 'Send alert to all devices'
+                        : 'Send another alert to all devices',
                   ),
                 ),
               ),
+              if (_publishedAlertCount > 0) ...[
+                const SizedBox(height: 10),
+                Text(
+                  '$_publishedAlertCount alert${_publishedAlertCount == 1 ? '' : 's'} published in this session. You can keep creating more.',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -1728,7 +1797,7 @@ class _DashboardRail extends StatelessWidget {
     color: Theme.of(context).brightness == Brightness.dark
         ? const Color(0xff0c1d2d)
         : const Color(0xffeaf1f2),
-    padding: const EdgeInsets.only(top: 16),
+    padding: EdgeInsets.only(top: compact ? 10 : 16),
     child: Column(
       children: [
         _RailItem(
@@ -1791,10 +1860,10 @@ class _RailItem extends StatelessWidget {
     child: Container(
       width: double.infinity,
       margin: EdgeInsets.symmetric(
-        horizontal: compact ? 8 : 10,
-        vertical: compact ? 2 : 4,
+        horizontal: compact ? 6 : 10,
+        vertical: compact ? 1 : 4,
       ),
-      padding: EdgeInsets.symmetric(vertical: compact ? 9 : 13),
+      padding: EdgeInsets.symmetric(vertical: compact ? 7 : 13),
       decoration: BoxDecoration(
         color: selected
             ? (Theme.of(context).brightness == Brightness.dark
@@ -1819,7 +1888,7 @@ class _RailItem extends StatelessWidget {
               color: selected
                   ? _cyan
                   : Theme.of(context).colorScheme.onSurfaceVariant,
-              fontSize: compact ? 9.5 : 11,
+              fontSize: compact ? 9 : 11,
               fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
             ),
           ),
