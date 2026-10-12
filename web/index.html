@@ -37,24 +37,34 @@
     // Remove service workers from older Flutter deployments before loading
     // the app, then reload once so the old worker cannot serve one more bundle.
     (async function () {
-      const registrations = 'serviceWorker' in navigator
-        ? await navigator.serviceWorker.getRegistrations()
-        : [];
-      const cacheKeys = window.caches ? await caches.keys() : [];
-      const hadOldCache = registrations.length > 0 || cacheKeys.length > 0;
+      const resetKey = 'floodwatch-cache-reset-v1';
+      const alreadyReset = sessionStorage.getItem(resetKey) === '1';
+      try {
+        const registrations = 'serviceWorker' in navigator
+          ? await navigator.serviceWorker.getRegistrations()
+          : [];
+        const cacheKeys = window.caches ? await caches.keys() : [];
+        const hadOldCache = registrations.length > 0 || cacheKeys.length > 0;
 
-      await Promise.all([
-        ...registrations.map((registration) => registration.unregister()),
-        ...cacheKeys.map((key) => caches.delete(key)),
-      ]);
-
-      if (hadOldCache) {
-        window.location.reload();
-        return;
+        if (hadOldCache && !alreadyReset) {
+          sessionStorage.setItem(resetKey, '1');
+          await Promise.race([
+            Promise.all([
+              ...registrations.map((registration) => registration.unregister()),
+              ...cacheKeys.map((key) => caches.delete(key)),
+            ]),
+            new Promise((resolve) => setTimeout(resolve, 1500)),
+          ]);
+          window.location.reload();
+          return;
+        }
+        sessionStorage.removeItem(resetKey);
+      } catch (error) {
+        console.warn('Unable to clear an older app cache:', error);
       }
 
       const script = document.createElement('script');
-      script.src = 'flutter_bootstrap.js';
+      script.src = 'flutter_bootstrap.js?build=d270251';
       script.async = true;
       document.body.appendChild(script);
     })();
