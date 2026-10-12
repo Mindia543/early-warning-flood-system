@@ -18,6 +18,7 @@ type WarningData = {
   description: string;
   severity: string;
   affectedArea: string;
+  status?: string;
   expiryTime?: { toDate: () => Date };
   source: string;
 };
