@@ -101,13 +101,13 @@ Verification and an App Password for this type of SMTP connection.
 ## Free Gmail option on Firebase Spark
 
 If billing is not available, use the free Google Apps Script relay in
-`tools/google-apps-script/`. It reads published warnings through the signed-in
-FloodWatch account and sends matching alerts from Gmail every five minutes.
+`tools/google-apps-script/`. It reads published warnings and sends matching
+alerts from Gmail every five minutes without storing a FloodWatch password.
 Follow `tools/google-apps-script/README.md`; enter credentials only in Google
 Apps Script project properties, never in Flutter or GitHub. This avoids Firebase
-Cloud Functions and does not require the Blaze plan. The relay sends to the
-account's exact profile location and remembers warning IDs so it does not send
-duplicates.
+Cloud Functions and does not require the Blaze plan. Set the exact warning area
+in the relay's private script properties; it remembers warning IDs so it does
+not send duplicates.
 
 ## Checks
 
