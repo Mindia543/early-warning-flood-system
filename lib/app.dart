@@ -234,13 +234,23 @@ class _FloodDashboardState extends State<FloodDashboard> {
     super.initState();
     _database = DatabaseService();
     _notifications = NotificationService(database: _database);
-    _database.createOrUpdateUserProfile(
-      displayName: widget.user.displayName ?? '',
-      location: '',
-      alertsEnabled: true,
-      emailAlertsEnabled: true,
-    );
+    _ensureProfile();
     _notifications.initialize();
+  }
+
+  Future<void> _ensureProfile() async {
+    try {
+      final profile = await _database.watchCurrentUserProfile().first;
+      if (profile != null) return;
+      await _database.createOrUpdateUserProfile(
+        displayName: widget.user.displayName ?? '',
+        location: '',
+        alertsEnabled: true,
+        emailAlertsEnabled: true,
+      );
+    } catch (error) {
+      debugPrint('Could not initialize user profile: $error');
+    }
   }
 
   @override

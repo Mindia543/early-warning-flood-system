@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "425949639128",
+    "project_id": "early-warning-flood-system",
+    "storage_bucket": "early-warning-flood-system.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:425949639128:android:9a13813ca5cee37a5b02ad",
+        "android_client_info": {
+          "package_name": "com.example.early_warning_flood_system"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCggyF2Bp5shfBj7v-EeDB5XWvZAxN2NCY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

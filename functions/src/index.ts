@@ -66,7 +66,6 @@ export const sendWarningNotifications = onDocumentUpdated(
     const warningId = event.params.warningId;
     const users = await db
       .collection("users")
-      .where("alertsEnabled", "==", true)
       .where("location", "==", after.affectedArea)
       .get();
 
@@ -82,6 +81,11 @@ async function notifyUser(
   warning: WarningData,
 ): Promise<void> {
   await sendWarningEmail(user, warningId, warning);
+
+  if (user.data().alertsEnabled !== true) {
+    await writeLog(user.id, warningId, "skipped", 0, "Push alerts are disabled.", "push");
+    return;
+  }
 
   const devices = await user.ref.collection("devices").where("enabled", "==", true).get();
   const tokens = devices.docs

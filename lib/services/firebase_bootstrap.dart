@@ -7,8 +7,6 @@ import 'notification_service.dart';
 
 class FirebaseBootstrap {
   static Future<bool> initialize() async {
-    if (!DefaultFirebaseOptions.isConfigured) return false;
-
     try {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
