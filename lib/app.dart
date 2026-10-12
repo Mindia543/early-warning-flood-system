@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'models/flood_warning.dart';
 import 'services/auth_service.dart';
 import 'services/database_service.dart';
+import 'services/flood_risk_service.dart';
 import 'services/notification_service.dart';
 
 const _navy = Color(0xff071827);
@@ -772,17 +773,143 @@ class _SimulationPageState extends State<_SimulationPage> {
     text:
         'Water levels are rising. Stay alert, move to higher ground if necessary, and follow local safety guidance.',
   );
+  final _waterLevelController = TextEditingController();
+  final _rainfallController = TextEditingController();
+  final _riseRateController = TextEditingController();
   WarningSeverity _severity = WarningSeverity.high;
   int _durationMinutes = 30;
   bool _submitting = false;
+  FloodRiskAssessment? _riskAssessment;
 
   @override
   void dispose() {
     _areaController.dispose();
     _titleController.dispose();
     _descriptionController.dispose();
+    _waterLevelController.dispose();
+    _rainfallController.dispose();
+    _riseRateController.dispose();
     super.dispose();
   }
+
+  FloodRiskAssessment? _readRiskAssessment() {
+    final waterLevel = double.tryParse(_waterLevelController.text.trim());
+    final rainfall = double.tryParse(_rainfallController.text.trim());
+    final riseRate = double.tryParse(_riseRateController.text.trim());
+    if (waterLevel == null || rainfall == null || riseRate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter water level, rainfall, and rise rate readings.'),
+        ),
+      );
+      return null;
+    }
+    if (waterLevel < 0 || rainfall < 0 || riseRate < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sensor readings cannot be negative.')),
+      );
+      return null;
+    }
+    return FloodRiskService.assess(
+      waterLevelCm: waterLevel,
+      rainfallMmPerHour: rainfall,
+      riseRateCmPerHour: riseRate,
+    );
+  }
+
+  Future<void> _assessAndPublish() async {
+    final assessment = _readRiskAssessment();
+    if (assessment == null) return;
+    setState(() => _riskAssessment = assessment);
+    if (!assessment.shouldAlert) return;
+    if (_areaController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Add the affected area before publishing.'),
+        ),
+      );
+      return;
+    }
+
+    _severity = assessment.warningSeverity;
+    _titleController.text = '${assessment.label}: flood risk detected';
+    _descriptionController.text =
+        '${assessment.summary}. Risk score ${assessment.score}/105. '
+        'Move to higher ground if necessary and follow local safety guidance.';
+    await _submit();
+  }
+
+  Widget _riskMonitor(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(22),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.radar_rounded, color: _cyan),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Early-warning risk monitor',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Use readings from a water-level or rain sensor. FloodWatch combines the readings and publishes an alert when the risk reaches warning level.',
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 18),
+          TextField(
+            controller: _waterLevelController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Water level (cm)',
+              prefixIcon: Icon(Icons.water_outlined),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _rainfallController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Rainfall intensity (mm/hour)',
+              prefixIcon: Icon(Icons.water_drop_outlined),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _riseRateController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Water rise rate (cm/hour)',
+              prefixIcon: Icon(Icons.trending_up_rounded),
+            ),
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _submitting ? null : _assessAndPublish,
+              icon: const Icon(Icons.health_and_safety_outlined),
+              label: const Text('Assess conditions and alert if needed'),
+            ),
+          ),
+          if (_riskAssessment != null) ...[
+            const SizedBox(height: 16),
+            _RiskResult(assessment: _riskAssessment!),
+          ],
+        ],
+      ),
+    ),
+  );
 
   Future<void> _submit() async {
     if (_areaController.text.trim().isEmpty) return;
@@ -923,6 +1050,8 @@ class _SimulationPageState extends State<_SimulationPage> {
         ),
       ),
       const SizedBox(height: 16),
+      _riskMonitor(context),
+      const SizedBox(height: 16),
       _StatusPanel(
         icon: Icons.notifications_active_outlined,
         title: 'Alert delivery',
@@ -932,6 +1061,64 @@ class _SimulationPageState extends State<_SimulationPage> {
       ),
     ],
   );
+}
+
+class _RiskResult extends StatelessWidget {
+  const _RiskResult({required this.assessment});
+  final FloodRiskAssessment assessment;
+
+  @override
+  Widget build(BuildContext context) {
+    final alert = assessment.shouldAlert;
+    final color = assessment.level == FloodRiskLevel.emergency
+        ? Colors.redAccent
+        : assessment.level == FloodRiskLevel.warning
+        ? Colors.deepOrange
+        : assessment.level == FloodRiskLevel.watch
+        ? const Color(0xffffc857)
+        : _green;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .12),
+        border: Border.all(color: color.withValues(alpha: .55)),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (alert)
+            const _BlinkingCautionIcon()
+          else
+            Icon(Icons.verified_rounded, color: color, size: 30),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${assessment.label} • score ${assessment.score}/105',
+                  style: TextStyle(color: color, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 4),
+                Text(assessment.summary),
+                const SizedBox(height: 4),
+                Text(
+                  alert
+                      ? 'The warning was published to signed-in devices.'
+                      : 'No alert was published. Continue monitoring the readings.',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _AlertsPage extends StatelessWidget {
