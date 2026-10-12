@@ -30,9 +30,7 @@ service cloud.firestore {
     }
 
     match /warnings/{warningId} {
-      // Published warning content is intentionally public so the free Gmail
-      // relay can read it without storing a FloodWatch password.
-      allow read: if resource.data.status == 'published';
+      allow read: if signedIn();
       allow create: if isAdmin()
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.status == 'draft';

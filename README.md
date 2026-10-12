@@ -109,6 +109,14 @@ Cloud Functions and does not require the Blaze plan. Set the exact warning area
 in the relay's private script properties; it remembers warning IDs so it does
 not send duplicates.
 
+## In-app cross-device alerts
+
+Every signed-in device listens to the published warning feed in Firestore.
+When an admin publishes a warning, it appears in the app on all signed-in
+devices and a new-warning banner is shown while the app is open. Background
+OS push notifications still require a trusted server trigger; the app does not
+depend on Gmail for in-app alerts.
+
 ## Checks
 
 ```bash

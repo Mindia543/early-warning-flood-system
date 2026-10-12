@@ -288,6 +288,8 @@ class _FloodDashboardState extends State<FloodDashboard> {
   late final DatabaseService _database;
   late final NotificationService _notifications;
   late Stream<List<FloodWarning>> _warningStream;
+  final Set<String> _knownWarningIds = <String>{};
+  bool _receivedFirstWarningSnapshot = false;
   int _selectedNav = 0;
 
   @override
@@ -326,7 +328,7 @@ class _FloodDashboardState extends State<FloodDashboard> {
         displayName: widget.user.displayName ?? '',
         location: '',
         alertsEnabled: true,
-        emailAlertsEnabled: true,
+        emailAlertsEnabled: false,
       );
     } catch (error) {
       debugPrint('Could not initialize user profile: $error');
@@ -346,7 +348,6 @@ class _FloodDashboardState extends State<FloodDashboard> {
       text: profile?.location ?? '',
     );
     var alertsEnabled = profile?.alertsEnabled ?? true;
-    var emailAlertsEnabled = profile?.emailAlertsEnabled ?? true;
     final saved = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => StatefulBuilder(
@@ -364,12 +365,6 @@ class _FloodDashboardState extends State<FloodDashboard> {
                 value: alertsEnabled,
                 onChanged: (value) =>
                     setDialogState(() => alertsEnabled = value),
-              ),
-              SwitchListTile(
-                title: const Text('Receive email alerts'),
-                value: emailAlertsEnabled,
-                onChanged: (value) =>
-                    setDialogState(() => emailAlertsEnabled = value),
               ),
             ],
           ),
@@ -391,7 +386,7 @@ class _FloodDashboardState extends State<FloodDashboard> {
         displayName: widget.user.displayName ?? '',
         location: locationController.text,
         alertsEnabled: alertsEnabled,
-        emailAlertsEnabled: emailAlertsEnabled,
+        emailAlertsEnabled: false,
       );
     }
     locationController.dispose();
@@ -409,6 +404,45 @@ class _FloodDashboardState extends State<FloodDashboard> {
 
   void _refreshWarnings() {
     setState(() => _warningStream = _database.watchActiveWarnings());
+  }
+
+  void _announceNewWarnings(List<FloodWarning> warnings) {
+    final currentIds = warnings.map((warning) => warning.id).toSet();
+    if (!_receivedFirstWarningSnapshot) {
+      _knownWarningIds
+        ..clear()
+        ..addAll(currentIds);
+      _receivedFirstWarningSnapshot = true;
+      return;
+    }
+
+    final newWarnings = warnings
+        .where((warning) => !_knownWarningIds.contains(warning.id))
+        .toList();
+    _knownWarningIds
+      ..clear()
+      ..addAll(currentIds);
+    if (newWarnings.isEmpty || !mounted) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final first = newWarnings.first;
+      final message = newWarnings.length == 1
+          ? 'New flood warning: ${first.title}'
+          : '${newWarnings.length} new flood warnings received';
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 8),
+            content: Text(message),
+            action: SnackBarAction(
+              label: 'VIEW',
+              onPressed: _refreshWarnings,
+            ),
+          ),
+        );
+    });
   }
 
   @override
@@ -540,6 +574,7 @@ class _FloodDashboardState extends State<FloodDashboard> {
                 );
               }
               final warnings = snapshot.data!;
+              _announceNewWarnings(warnings);
               return ListView(
                 padding: const EdgeInsets.all(30),
                 children: [
