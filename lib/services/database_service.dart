@@ -51,16 +51,20 @@ class DatabaseService {
   }
 
   Stream<List<FloodWarning>> watchActiveWarnings() {
+    // Keep this query to a single indexed field. Filtering expiry locally
+    // avoids requiring a composite Firestore index before the dashboard can
+    // render its first state.
     return _warnings
         .where('status', isEqualTo: WarningStatus.published.name)
-        .where('expiryTime', isGreaterThan: Timestamp.now())
-        .orderBy('expiryTime')
         .snapshots()
         .map(
-          (snapshot) => snapshot.docs
-              .map(FloodWarning.fromSnapshot)
-              .where((warning) => warning.isActive)
-              .toList(),
+          (snapshot) =>
+              (snapshot.docs.map(FloodWarning.fromSnapshot).toList()
+                  ..removeWhere((warning) => !warning.isActive))
+                ..sort(
+                  (first, second) =>
+                      first.expiryTime.compareTo(second.expiryTime),
+                ),
         );
   }
 
