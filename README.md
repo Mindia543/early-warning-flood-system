@@ -28,7 +28,11 @@ firebase use YOUR_PROJECT_ID
 firebase deploy --only firestore:rules,firestore:indexes
 ```
 
-Deploy the trusted notification backend:
+The optional trusted notification backend (Cloud Functions) requires the Firebase
+Blaze plan. If you are staying on Spark, do not deploy Functions; server-triggered
+push/email delivery will not run.
+
+To enable the backend on a billed project:
 
 ```bash
 cd functions
@@ -48,9 +52,11 @@ and Firestore rules.
 Users register with Gmail or another email address through Firebase
 Authentication. FCM sends to registered device tokens, not to a Gmail inbox.
 Signing in on two devices registers two tokens for the account. When an admin
-publishes a warning, the Cloud Function matches users whose `location` exactly
-matches the warning `affectedArea`, sends to all enabled devices, records
-delivery results in `notification_logs`, and disables invalid tokens.
+publishes a warning and the Cloud Function is deployed, it matches users whose
+`location` exactly matches the warning `affectedArea`, sends to all enabled
+devices, records delivery results in `notification_logs`, and disables invalid
+tokens. Without the function, the app can still use Firestore, but it cannot send
+server-triggered push notifications or email.
 
 Use two physical or supported devices with separate accounts to verify the
 Firestore warning, delivery log, foreground dashboard, and background OS
@@ -58,14 +64,17 @@ notification. Do not claim delivery success until that test passes.
 
 For web push, replace the placeholders in `web/firebase-messaging-sw.js` and
 add the deployed domain to Firebase authorized domains. The GitHub Pages
-workflow in `.github/workflows/deploy-web.yml` publishes the web build from
-`main`; enable Pages to get the public link. Firebase Hosting is an alternative:
+workflow in `.github/workflows/deploy-web.yml` builds from `main` or `master`.
+In the repository, choose **Settings > Pages > Build and deployment > Source >
+GitHub Actions** to publish and get the public link. Firebase Hosting is an
+alternative:
 `flutter build web --release` then `firebase deploy --only hosting`.
 
 ## Email delivery setup
 
-The same publish trigger sends email to each matching user's email address
-through Gmail SMTP. Use a dedicated Gmail account and a Google App Password.
+When Cloud Functions is deployed on the Blaze plan, the same publish trigger
+sends email to each matching user's email address through Gmail SMTP. Use a
+dedicated Gmail account and a Google App Password.
 Store both values in Firebase Secret Manager; never put them in Flutter, `.env`
 files committed to Git, or GitHub source:
 
