@@ -102,6 +102,41 @@ class DatabaseService {
     return reference.id;
   }
 
+  /// Creates a clearly marked published simulation for the demo environment.
+  /// Firestore rules allow signed-in users to create simulation warnings only.
+  Future<String> simulateFlood({
+    required String title,
+    required String description,
+    required WarningSeverity severity,
+    required String affectedArea,
+    required Duration duration,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('You must be signed in.');
+    if (affectedArea.trim().isEmpty) {
+      throw ArgumentError('An affected area is required.');
+    }
+
+    final now = DateTime.now();
+    final reference = await _warnings.add({
+      'title': title.trim().isEmpty ? 'Simulated flood event' : title.trim(),
+      'description': description.trim().isEmpty
+          ? 'This is a FloodWatch simulation for testing alerts.'
+          : description.trim(),
+      'severity': severity.name,
+      'affectedArea': affectedArea.trim(),
+      'issueTime': Timestamp.fromDate(now),
+      'expiryTime': Timestamp.fromDate(now.add(duration)),
+      'source': 'FloodWatch simulation',
+      'status': WarningStatus.published.name,
+      'simulation': true,
+      'createdBy': user.uid,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    return reference.id;
+  }
+
   /// Publishing is intentionally a server-side operation. The callable
   /// function checks the administrator custom claim before changing status.
   Future<void> saveDeviceToken({

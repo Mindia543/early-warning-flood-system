@@ -31,9 +31,13 @@ service cloud.firestore {
 
     match /warnings/{warningId} {
       allow read: if signedIn();
-      allow create: if isAdmin()
-        && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.status == 'draft';
+      allow create: if (isAdmin()
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.status == 'draft')
+        || (signedIn()
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.status == 'published'
+          && request.resource.data.simulation == true);
       allow update: if isAdmin()
         && request.resource.data.createdBy == resource.data.createdBy;
       allow delete: if false;

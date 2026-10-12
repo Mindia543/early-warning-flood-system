@@ -30,6 +30,7 @@ class FloodWarning {
     required this.source,
     required this.status,
     required this.createdBy,
+    this.isSimulation = false,
     this.createdAt,
     this.updatedAt,
   });
@@ -44,6 +45,7 @@ class FloodWarning {
   final String source;
   final WarningStatus status;
   final String createdBy;
+  final bool isSimulation;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -76,6 +78,7 @@ class FloodWarning {
       source: _requiredString(data, 'source'),
       status: warningStatusFromString(data['status'] as String?),
       createdBy: _requiredString(data, 'createdBy'),
+      isSimulation: data['simulation'] as bool? ?? false,
       createdAt: _optionalDate(data['createdAt']),
       updatedAt: _optionalDate(data['updatedAt']),
     );
@@ -91,6 +94,7 @@ class FloodWarning {
     'source': source,
     'status': status.name,
     'createdBy': createdBy,
+    'simulation': isSimulation,
     'updatedAt': FieldValue.serverTimestamp(),
   };
 

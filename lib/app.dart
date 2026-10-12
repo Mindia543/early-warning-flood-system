@@ -406,6 +406,35 @@ class _FloodDashboardState extends State<FloodDashboard> {
     setState(() => _warningStream = _database.watchActiveWarnings());
   }
 
+  Future<void> _simulateFlood(
+    WarningSeverity severity,
+    String area,
+    String title,
+    String description,
+    Duration duration,
+  ) async {
+    try {
+      await _database.simulateFlood(
+        severity: severity,
+        affectedArea: area,
+        title: title,
+        description: description,
+        duration: duration,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Simulation published to all signed-in devices.'),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Simulation failed: $error')));
+    }
+  }
+
   void _announceNewWarnings(List<FloodWarning> warnings) {
     final currentIds = warnings.map((warning) => warning.id).toSet();
     if (!_receivedFirstWarningSnapshot) {
@@ -436,10 +465,7 @@ class _FloodDashboardState extends State<FloodDashboard> {
           SnackBar(
             duration: const Duration(seconds: 8),
             content: Text(message),
-            action: SnackBarAction(
-              label: 'VIEW',
-              onPressed: _refreshWarnings,
-            ),
+            action: SnackBarAction(label: 'VIEW', onPressed: _refreshWarnings),
           ),
         );
     });
@@ -569,12 +595,28 @@ class _FloodDashboardState extends State<FloodDashboard> {
                       showProgress: true,
                     ),
                     const SizedBox(height: 20),
-                    _QuickActionsPanel(onEditProfile: _editProfile),
+                    _QuickActionsPanel(
+                      onEditProfile: _editProfile,
+                      onSimulate: () => setState(() => _selectedNav = 1),
+                      onGuidance: () => setState(() => _selectedNav = 4),
+                    ),
                   ],
                 );
               }
               final warnings = snapshot.data!;
               _announceNewWarnings(warnings);
+              if (_selectedNav == 1) {
+                return _SimulationPage(onSimulate: _simulateFlood);
+              }
+              if (_selectedNav == 2) {
+                return _AlertsPage(warnings: warnings);
+              }
+              if (_selectedNav == 3) {
+                return _AnalyticsPage(warnings: warnings);
+              }
+              if (_selectedNav == 4) {
+                return const _GuidancePage();
+              }
               return ListView(
                 padding: const EdgeInsets.all(30),
                 children: [
@@ -595,7 +637,11 @@ class _FloodDashboardState extends State<FloodDashboard> {
                     accent: warnings.isEmpty ? _green : const Color(0xffffc857),
                   ),
                   const SizedBox(height: 20),
-                  _QuickActionsPanel(onEditProfile: _editProfile),
+                  _QuickActionsPanel(
+                    onEditProfile: _editProfile,
+                    onSimulate: () => setState(() => _selectedNav = 1),
+                    onGuidance: () => setState(() => _selectedNav = 4),
+                  ),
                   if (warnings.isNotEmpty) ...[
                     const SizedBox(height: 24),
                     const Text(
@@ -644,6 +690,426 @@ class _FloodDashboardState extends State<FloodDashboard> {
           ),
         ),
       ],
+    ),
+  );
+}
+
+class _SimulationPage extends StatefulWidget {
+  const _SimulationPage({required this.onSimulate});
+  final Future<void> Function(
+    WarningSeverity severity,
+    String area,
+    String title,
+    String description,
+    Duration duration,
+  )
+  onSimulate;
+
+  @override
+  State<_SimulationPage> createState() => _SimulationPageState();
+}
+
+class _SimulationPageState extends State<_SimulationPage> {
+  final _areaController = TextEditingController(text: 'Demo Area');
+  final _titleController = TextEditingController(text: 'Simulated flood event');
+  final _descriptionController = TextEditingController(
+    text:
+        'Water levels are rising in this simulation. Stay alert and follow safety guidance.',
+  );
+  WarningSeverity _severity = WarningSeverity.high;
+  int _durationMinutes = 30;
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _areaController.dispose();
+    _titleController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_areaController.text.trim().isEmpty) return;
+    setState(() => _submitting = true);
+    try {
+      await widget.onSimulate(
+        _severity,
+        _areaController.text,
+        _titleController.text,
+        _descriptionController.text,
+        Duration(minutes: _durationMinutes),
+      );
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(30),
+    children: [
+      Text(
+        'Flood simulation',
+        style: Theme.of(
+          context,
+        ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        'Publish a clearly marked test warning. Every signed-in device will see it in the app.',
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+      ),
+      const SizedBox(height: 22),
+      Card(
+        child: Padding(
+          padding: const EdgeInsets.all(22),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.science_outlined, color: _cyan),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Simulation controls',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              TextField(
+                controller: _areaController,
+                decoration: const InputDecoration(
+                  labelText: 'Affected area',
+                  hintText: 'Example: Mubi',
+                  prefixIcon: Icon(Icons.location_on_outlined),
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _titleController,
+                decoration: const InputDecoration(
+                  labelText: 'Alert title',
+                  prefixIcon: Icon(Icons.title_rounded),
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: _descriptionController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  labelText: 'Alert message',
+                  prefixIcon: Icon(Icons.notes_rounded),
+                  alignLabelWithHint: true,
+                ),
+              ),
+              const SizedBox(height: 14),
+              DropdownButtonFormField<WarningSeverity>(
+                value: _severity,
+                decoration: const InputDecoration(
+                  labelText: 'Severity',
+                  prefixIcon: Icon(Icons.warning_amber_rounded),
+                ),
+                items: WarningSeverity.values
+                    .map(
+                      (severity) => DropdownMenuItem(
+                        value: severity,
+                        child: Text(severity.name.toUpperCase()),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) setState(() => _severity = value);
+                },
+              ),
+              const SizedBox(height: 14),
+              DropdownButtonFormField<int>(
+                value: _durationMinutes,
+                decoration: const InputDecoration(
+                  labelText: 'Alert duration',
+                  prefixIcon: Icon(Icons.timer_outlined),
+                ),
+                items: const [15, 30, 60, 180]
+                    .map(
+                      (minutes) => DropdownMenuItem(
+                        value: minutes,
+                        child: Text('$minutes minutes'),
+                      ),
+                    )
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) setState(() => _durationMinutes = value);
+                },
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: _submitting ? null : _submit,
+                  icon: _submitting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.campaign_outlined),
+                  label: Text(
+                    _submitting
+                        ? 'Publishing simulation...'
+                        : 'Send alert to all devices',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(height: 16),
+      _StatusPanel(
+        icon: Icons.info_outline_rounded,
+        title: 'Demo mode',
+        message:
+            'Simulation alerts are labeled as FloodWatch simulations and expire automatically. Use this page to test multiple signed-in devices.',
+        accent: const Color(0xffffc857),
+      ),
+    ],
+  );
+}
+
+class _AlertsPage extends StatelessWidget {
+  const _AlertsPage({required this.warnings});
+  final List<FloodWarning> warnings;
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(30),
+    children: [
+      Text(
+        'Alerts',
+        style: Theme.of(
+          context,
+        ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        'Live warnings shared with every signed-in device.',
+        style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
+      ),
+      const SizedBox(height: 22),
+      if (warnings.isEmpty)
+        const _EmptyCard()
+      else
+        ...warnings.map(
+          (warning) => Card(
+            child: ListTile(
+              leading: Icon(
+                warning.isSimulation
+                    ? Icons.science_outlined
+                    : Icons.warning_amber_rounded,
+                color: warning.isSimulation ? _cyan : Colors.deepOrange,
+              ),
+              title: Text(warning.title),
+              subtitle: Text(
+                '${warning.severity.name.toUpperCase()} • ${warning.affectedArea}'
+                '${warning.isSimulation ? ' • SIMULATION' : ''}',
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => showDialog<void>(
+                context: context,
+                builder: (_) => AlertDialog(
+                  title: Text(warning.title),
+                  content: Text(warning.description),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Close'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+    ],
+  );
+}
+
+class _AnalyticsPage extends StatelessWidget {
+  const _AnalyticsPage({required this.warnings});
+  final List<FloodWarning> warnings;
+
+  @override
+  Widget build(BuildContext context) {
+    final simulations = warnings
+        .where((warning) => warning.isSimulation)
+        .length;
+    final critical = warnings
+        .where(
+          (warning) =>
+              warning.severity == WarningSeverity.high ||
+              warning.severity == WarningSeverity.severe,
+        )
+        .length;
+    final areas = <String, int>{};
+    for (final warning in warnings) {
+      areas.update(
+        warning.affectedArea,
+        (count) => count + 1,
+        ifAbsent: () => 1,
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.all(30),
+      children: [
+        Text(
+          'Analytics',
+          style: Theme.of(
+            context,
+          ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Live metrics from the current warning feed.',
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 22),
+        LayoutBuilder(
+          builder: (context, constraints) => GridView.count(
+            crossAxisCount: constraints.maxWidth < 720 ? 2 : 4,
+            crossAxisSpacing: 14,
+            mainAxisSpacing: 14,
+            childAspectRatio: constraints.maxWidth < 720 ? 1.8 : 2.5,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              _MetricCard(
+                icon: Icons.warning_amber_rounded,
+                label: 'Active warnings',
+                value: '${warnings.length}',
+                color: const Color(0xffffc857),
+              ),
+              _MetricCard(
+                icon: Icons.priority_high_rounded,
+                label: 'High priority',
+                value: '$critical',
+                color: Colors.deepOrange,
+              ),
+              _MetricCard(
+                icon: Icons.science_outlined,
+                label: 'Simulations',
+                value: '$simulations',
+                color: _cyan,
+              ),
+              _MetricCard(
+                icon: Icons.location_on_outlined,
+                label: 'Affected areas',
+                value: '${areas.length}',
+                color: _green,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 22),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Area breakdown',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 14),
+                if (areas.isEmpty)
+                  const Text('No active warning data yet.')
+                else
+                  ...areas.entries.map(
+                    (entry) => Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 7),
+                      child: Row(
+                        children: [
+                          Expanded(child: Text(entry.key)),
+                          Text(
+                            '${entry.value}',
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _GuidancePage extends StatelessWidget {
+  const _GuidancePage();
+
+  @override
+  Widget build(BuildContext context) => ListView(
+    padding: const EdgeInsets.all(30),
+    children: [
+      Text(
+        'Safety guidance',
+        style: Theme.of(
+          context,
+        ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+      ),
+      const SizedBox(height: 22),
+      const _GuidanceCard(
+        icon: Icons.home_work_outlined,
+        title: 'Before flooding',
+        text:
+            'Keep important documents, medication, and a torch in a waterproof bag. Know the safest route to higher ground.',
+      ),
+      const _GuidanceCard(
+        icon: Icons.directions_walk_rounded,
+        title: 'During flooding',
+        text:
+            'Move to higher ground, avoid walking or driving through moving water, and follow official emergency instructions.',
+      ),
+      const _GuidanceCard(
+        icon: Icons.power_off_rounded,
+        title: 'After flooding',
+        text:
+            'Avoid fallen power lines and contaminated water. Return only when local authorities say it is safe.',
+      ),
+    ],
+  );
+}
+
+class _GuidanceCard extends StatelessWidget {
+  const _GuidanceCard({
+    required this.icon,
+    required this.title,
+    required this.text,
+  });
+  final IconData icon;
+  final String title;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: ListTile(
+      contentPadding: const EdgeInsets.all(18),
+      leading: Icon(icon, color: _cyan, size: 30),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Text(text),
+      ),
     ),
   );
 }
@@ -853,8 +1319,14 @@ class _StatusPanel extends StatelessWidget {
 }
 
 class _QuickActionsPanel extends StatelessWidget {
-  const _QuickActionsPanel({required this.onEditProfile});
+  const _QuickActionsPanel({
+    required this.onEditProfile,
+    this.onSimulate,
+    this.onGuidance,
+  });
   final VoidCallback onEditProfile;
+  final VoidCallback? onSimulate;
+  final VoidCallback? onGuidance;
 
   @override
   Widget build(BuildContext context) => Card(
@@ -886,9 +1358,15 @@ class _QuickActionsPanel extends StatelessWidget {
                 label: 'Alert preferences',
                 onTap: onEditProfile,
               ),
-              const _ActionButton(
+              _ActionButton(
+                icon: Icons.water_damage_outlined,
+                label: 'Simulate flood',
+                onTap: onSimulate,
+              ),
+              _ActionButton(
                 icon: Icons.menu_book_outlined,
                 label: 'Safety guidance',
+                onTap: onGuidance,
               ),
             ],
           ),
@@ -938,22 +1416,28 @@ class _DashboardRail extends StatelessWidget {
           onTap: () => onSelected(0),
         ),
         _RailItem(
-          icon: Icons.warning_amber_rounded,
-          label: 'Alerts',
+          icon: Icons.science_outlined,
+          label: 'Simulate',
           selected: selected == 1,
           onTap: () => onSelected(1),
         ),
         _RailItem(
-          icon: Icons.analytics_outlined,
-          label: 'Analytics',
+          icon: Icons.warning_amber_rounded,
+          label: 'Alerts',
           selected: selected == 2,
           onTap: () => onSelected(2),
         ),
         _RailItem(
-          icon: Icons.menu_book_outlined,
-          label: 'Guidance',
+          icon: Icons.analytics_outlined,
+          label: 'Analytics',
           selected: selected == 3,
           onTap: () => onSelected(3),
+        ),
+        _RailItem(
+          icon: Icons.menu_book_outlined,
+          label: 'Guidance',
+          selected: selected == 4,
+          onTap: () => onSelected(4),
         ),
       ],
     ),
